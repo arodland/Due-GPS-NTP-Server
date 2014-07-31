@@ -1,7 +1,7 @@
 void setup() {
-  // initialize serial communication at 9600 bits per second:
-  Serial.begin(115200);
+  SerialUSB.begin(115200);
   Serial1.begin(4800);
+
   pmc_enable_periph_clk(TC_INTERFACE_ID + 0);
   TC_Configure(TC0, 0,
     TC_CMR_TCCLKS_XC0 |
@@ -36,24 +36,24 @@ void TC0_Handler() {
   static int ct = 0;
   uint32_t status = TC0->TC_CHANNEL[0].TC_SR;
   if (status & TC_SR_CPCS) {
-    Serial.print("TICK: ");
-    Serial.println(ct++);
+    SerialUSB.print("TICK: ");
+    SerialUSB.println(ct++);
   }
   if (status & TC_SR_LDRAS) {
-    Serial.print("CAPT 0: ");
+    SerialUSB.print("CAPT 0: ");
     uint32_t tm = TC0->TC_CHANNEL[0].TC_RA;
     TC0->TC_CHANNEL[0].TC_RB;
-    Serial.println(tm);
+    SerialUSB.println(tm);
   }
 }
 
 void TC1_Handler() {
   uint32_t status = TC0->TC_CHANNEL[1].TC_SR;
   if (status & TC_SR_LDRAS) {
-    Serial.print("CAPT 1: ");
+    SerialUSB.print("CAPT 1: ");
     uint32_t tm = TC0->TC_CHANNEL[1].TC_RA;
     TC0->TC_CHANNEL[1].TC_RB;
-    Serial.println(tm);
+    SerialUSB.println(tm);
   }
 }
 
