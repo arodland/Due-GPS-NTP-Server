@@ -2,7 +2,7 @@ void setup() {
   SerialUSB.begin(115200);
   Serial1.begin(4800);
 
-  pmc_enable_periph_clk(TC_INTERFACE_ID + 0);
+  pmc_enable_periph_clk(ID_TC0);
   TC_Configure(TC0, 0,
     TC_CMR_TCCLKS_XC0 |
     TC_CMR_WAVSEL_UP_RC |
@@ -15,7 +15,7 @@ void setup() {
   TC0->TC_CHANNEL[0].TC_RC = 10000000;
   NVIC_EnableIRQ(TC0_IRQn);
 
-  pmc_enable_periph_clk(TC_INTERFACE_ID + 1);
+  pmc_enable_periph_clk(ID_TC1);
   TC_Configure(TC0, 1,
     TC_CMR_TCCLKS_XC0 |
     TC_CMR_WAVSEL_UP_RC |
