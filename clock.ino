@@ -1,7 +1,7 @@
+#include "gps.h"
+
 void setup() {
   SerialUSB.begin(115200);
-  Serial1.begin(4800);
-
   pmc_enable_periph_clk(ID_TC0);
   TC_Configure(TC0, 0,
     TC_CMR_TCCLKS_XC0 |
@@ -30,6 +30,8 @@ void setup() {
   TC0->TC_BCR = TC_BCR_SYNC;
   
   NVIC_EnableIRQ(TC1_IRQn);
+
+  gps_init();
 }
 
 void TC0_Handler() {
@@ -58,4 +60,5 @@ void TC1_Handler() {
 }
 
 void loop() {
+  gps_poll();
 }
