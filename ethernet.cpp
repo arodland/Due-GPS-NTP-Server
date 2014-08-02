@@ -8,6 +8,8 @@
 #define I2C_ADDRESS 0x50
 
 unsigned char mac[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+volatile char ether_int = 0;
+uint32_t packet_ts;
 
 EthernetUDP Udp;
 
@@ -55,14 +57,26 @@ void clear_ether_interrupt() {
   W5100.writeSnIR(2, 0xFF);
   W5100.writeSnIR(3, 0xFF);
   __enable_irq();
+  ether_int = 0;
+}
+
+void ether_interrupt(uint32_t tm) {
+  if (!ether_int) {
+    packet_ts = tm;
+    ether_int = 1;
+  }
 }
 
 char packet_buffer[256];
 
-void ether_interrupt(uint32_t tm) {
+void ether_recv() {
   debug("ETHER INT: ");
+  debug(packet_ts);
+  debug(" Handled at: ");
+  uint32_t tm = TC0->TC_CHANNEL[0].TC_CV;
   debug(tm);
   debug("\r\n");
+
   int packet_size = Udp.parsePacket();
   do {
     if (packet_size > sizeof(packet_buffer)) {

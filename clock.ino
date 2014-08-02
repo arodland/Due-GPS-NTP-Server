@@ -62,4 +62,7 @@ void TC1_Handler() {
 
 void loop() {
   gps_poll();
+  if (ether_int) {
+    ether_recv();
+  }
 }
