@@ -26,7 +26,7 @@ VERIFY:=-v
 
 # Space-separated paths to libraries you want to include. If there are 
 # sub-directories in the library directory, you will have to include these also.
-MY_LIBS:=
+MY_LIBS:=$(ADIR)/hardware/arduino/sam/libraries/SPI $(ADIR)/libraries/Ethernet/src $(ADIR)/libraries/Ethernet/src/utility
 
 # End User-Specific settings
 
