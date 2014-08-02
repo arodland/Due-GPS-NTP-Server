@@ -1,4 +1,5 @@
 #include "gps.h"
+#include "ethernet.h"
 
 void setup() {
   SerialUSB.begin(115200);
@@ -6,7 +7,7 @@ void setup() {
   TC_Configure(TC0, 0,
     TC_CMR_TCCLKS_XC0 |
     TC_CMR_WAVSEL_UP_RC |
-    TC_CMR_LDRA_RISING |
+    TC_CMR_LDRA_FALLING |
     TC_CMR_CPCTRG
   );
   TC0->TC_CHANNEL[0].TC_IER = TC_IER_CPCS | TC_IER_LDRAS;
@@ -32,6 +33,7 @@ void setup() {
   NVIC_EnableIRQ(TC1_IRQn);
 
   gps_init();
+  ether_init();
 }
 
 void TC0_Handler() {
@@ -42,17 +44,16 @@ void TC0_Handler() {
     SerialUSB.println(ct++);
   }
   if (status & TC_SR_LDRAS) {
-    SerialUSB.print("CAPT 0: ");
     uint32_t tm = TC0->TC_CHANNEL[0].TC_RA;
     TC0->TC_CHANNEL[0].TC_RB;
-    SerialUSB.println(tm);
+    ether_interrupt(tm);
   }
 }
 
 void TC1_Handler() {
   uint32_t status = TC0->TC_CHANNEL[1].TC_SR;
   if (status & TC_SR_LDRAS) {
-    SerialUSB.print("CAPT 1: ");
+    SerialUSB.print("CAPT: ");
     uint32_t tm = TC0->TC_CHANNEL[1].TC_RA;
     TC0->TC_CHANNEL[1].TC_RB;
     SerialUSB.println(tm);
