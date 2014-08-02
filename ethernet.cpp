@@ -62,7 +62,7 @@ char packet_buffer[256];
 void ether_interrupt(uint32_t tm) {
   debug("ETHER INT: ");
   debug(tm);
-  debug("\n");
+  debug("\r\n");
   int packet_size = Udp.parsePacket();
   do {
     if (packet_size > sizeof(packet_buffer)) {

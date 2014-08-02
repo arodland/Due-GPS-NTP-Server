@@ -145,14 +145,14 @@ void gps_poll() {
         if (ch == 0xa0)
           decoder_state = GPS_HEADER2;
         else {
-          debug("Got garbage char "); debug_int(ch); debug(" from GPS\n");
+          debug("Got garbage char "); debug_int(ch); debug(" from GPS\r\n");
         }
         break;
       case GPS_HEADER2:
         if (ch == 0xa2)
           decoder_state = GPS_LENGTH1;
         else {
-          debug("Got garbage char "); debug_int(ch); debug(" from GPS (expecting 2nd header byte)\n");
+          debug("Got garbage char "); debug_int(ch); debug(" from GPS (expecting 2nd header byte)\r\n");
           decoder_state = GPS_HEADER1;
         }
         break;
@@ -164,7 +164,7 @@ void gps_poll() {
         gps_payload_len += ch;
         gps_payload_remain = gps_payload_len;
         if (gps_payload_len > GPS_BUFFER_SIZE - 1) {
-          debug_int(gps_payload_len); debug(" byte payload too big\n");
+          debug_int(gps_payload_len); debug(" byte payload too big\r\n");
           gps_ignore_payload = 1;
         } else {
           gps_message_valid = 1;
@@ -193,7 +193,7 @@ void gps_poll() {
           if (gps_payload_checksum != msg_checksum) {
             debug("Received checksum "); debug_int(msg_checksum);
             debug(" != calculated "); debug_int(gps_payload_checksum);
-            debug(", discarding message\n");
+            debug(", discarding message\r\n");
             gps_message_valid = 0;
           }
         }
@@ -203,7 +203,7 @@ void gps_poll() {
         if (ch == 0xb0)
           decoder_state = GPS_TRAILER2;
         else {
-          debug("GPS got garbage "); debug_int(ch); debug(" (expecting 1st trailer)\n");
+          debug("GPS got garbage "); debug_int(ch); debug(" (expecting 1st trailer)\r\n");
           decoder_state = GPS_HEADER1;
         }
         break;
@@ -212,12 +212,12 @@ void gps_poll() {
           if (gps_message_valid)
             gps_handle_message();
         } else {
-          debug("GPS Got garbage "); debug_int(ch); debug(" (expecting 2nd trailer\n");
+          debug("GPS Got garbage "); debug_int(ch); debug(" (expecting 2nd trailer\r\n");
         }
         decoder_state = GPS_HEADER1;
         break;
       default:
-        debug("GPS decoder in unknown state?\n");
+        debug("GPS decoder in unknown state?\r\n");
         decoder_state = GPS_HEADER1;
     }
   }
@@ -356,7 +356,7 @@ void gps_geodetic_message() {
   debug_int(second); debug("."); debug_int(millis);
   debug(", ");
   debug_int(numsvs);
-  debug(" SVs\n");
+  debug(" SVs\r\n");
 
   int utc_offset = gps_utc_offset(hour, minute, second, gps_tow_sec);
 
@@ -366,13 +366,13 @@ void gps_geodetic_message() {
 void gps_ack_message() {
   debug("Got ACK for message ");
   debug_int((int)gps_payload[1]);
-  debug("\n");
+  debug("\r\n");
 }
 
 void gps_nak_message() {
   debug("Got NAK for message ");
   debug_int((int)gps_payload[1]);
-  debug("\n");
+  debug("\r\n");
 }
 void gps_handle_message() {
   unsigned char message_type = gps_payload[0];
@@ -406,7 +406,7 @@ void gps_handle_message() {
     default:
       debug("Got "); debug_int(gps_payload_len);
       debug(" byte message, type "); debug_int((int)message_type);
-      debug("\n");
+      debug("\r\n");
       break;
   }
 }
