@@ -18,7 +18,7 @@
 
 #user specific settings:
 #where to find the IDE
-ADIR:=$(HOME)/software/arduino-1.5.7/hardware
+ADIR:=$(HOME)/software/arduino-1.5.7
 #which serial port to use (add a file with SUBSYSTEMS=="usb", ATTRS{product}=="Arduino Due Prog. Port", ATTRS{idProduct}=="003d", ATTRS{idVendor}=="2341", SYMLINK+="arduino_due" in /etc/udev/rules.d/ to get this working)
 PORT:=/dev/ttyACM0
 #if we want to verify the bossac upload, define this to -v
@@ -31,22 +31,23 @@ MY_LIBS:=
 # End User-Specific settings
 
 #then some general settings. They should not be necessary to modify.
-CXX:=$(ADIR)/tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-g++
-CC:=$(ADIR)/tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-gcc
+HARDWARE:=$(ADIR)/hardware
+CXX:=$(HARDWARE)/tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-g++
+CC:=$(HARDWARE)/tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-gcc
 C:=$(CC)
 SAM:=arduino/sam/
 CMSIS:=arduino/sam/system/CMSIS/
 LIBSAM:=arduino/sam/system/libsam
 TMPDIR:=$(PWD)/build
-AR:=$(ADIR)/tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-ar 
+AR:=$(HARDWARE)/tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-ar 
 
 
 #all these values are hard coded and should maybe be configured somehow else,
 #like olikraus does in his makefile.
 DEFINES:=-Dprintf=iprintf -DF_CPU=84000000L -DARDUINO=157 -D__SAM3X8E__ -DUSB_PID=0x003e -DUSB_VID=0x2341 -DUSBCON
 
-INCLUDES:=-I$(ADIR)/$(LIBSAM) -I$(ADIR)/$(CMSIS)/CMSIS/Include/ -I$(ADIR)/$(CMSIS)/Device/ATMEL/
-INCLUDES += -I$(ADIR)/$(SAM)/cores/arduino -I$(ADIR)/$(SAM)/variants/arduino_due_x
+INCLUDES:=-I$(HARDWARE)/$(LIBSAM) -I$(HARDWARE)/$(CMSIS)/CMSIS/Include/ -I$(HARDWARE)/$(CMSIS)/Device/ATMEL/
+INCLUDES += -I$(HARDWARE)/$(SAM)/cores/arduino -I$(HARDWARE)/$(SAM)/variants/arduino_due_x
 INCLUDES += $(patsubst %,-I%,$(MY_LIBS))
 
 #also include the current dir for convenience
@@ -69,8 +70,8 @@ MYSRCFILES:=$(NEWMAINFILE) $(shell ls *.cpp 2>/dev/null) $(wildcard $(patsubst %
 MYOBJFILES:=$(addsuffix .o,$(addprefix $(TMPDIR)/,$(notdir $(MYSRCFILES))))
 
 #These source files are the ones forming core.a
-CORESRCXX:=$(shell ls ${ADIR}/${SAM}/cores/arduino/*.cpp ${ADIR}/${SAM}/cores/arduino/USB/*.cpp  ${ADIR}/${SAM}/variants/arduino_due_x/variant.cpp)
-CORESRC:=$(shell ls ${ADIR}/${SAM}/cores/arduino/*.c)
+CORESRCXX:=$(shell ls ${HARDWARE}/${SAM}/cores/arduino/*.cpp ${HARDWARE}/${SAM}/cores/arduino/USB/*.cpp  ${HARDWARE}/${SAM}/variants/arduino_due_x/variant.cpp)
+CORESRC:=$(shell ls ${HARDWARE}/${SAM}/cores/arduino/*.c)
 
 #convert the core source files to object files. assume no clashes.
 COREOBJSXX:=$(addprefix $(TMPDIR)/core/,$(notdir $(CORESRCXX)) )
@@ -112,7 +113,7 @@ $(TMPDIR)/core:
 
 #creates the cpp file from the .ino file
 $(NEWMAINFILE): $(PROJNAME).ino
-	cat $(ADIR)/arduino/sam/cores/arduino/main.cpp > $(NEWMAINFILE)
+	cat $(HARDWARE)/arduino/sam/cores/arduino/main.cpp > $(NEWMAINFILE)
 	cat $(PROJNAME).ino >> $(NEWMAINFILE)
 	echo 'extern "C" void __cxa_pure_virtual() {while (true);}' >> $(NEWMAINFILE)
 
@@ -152,17 +153,17 @@ $(TMPDIR)/core.a: $(TMPDIR)/core $(COREOBJS) $(COREOBJSXX)
 
 #link our own object files with core to form the elf file
 $(TMPDIR)/$(PROJNAME).elf: $(TMPDIR)/core.a $(TMPDIR)/core/syscalls_sam3.c.o $(MYOBJFILES) 
-	$(CXX) -Os -Wl,--gc-sections -mcpu=cortex-m3 -T$(ADIR)/$(SAM)/variants/arduino_due_x/linker_scripts/gcc/flash.ld -Wl,-Map,$(NEWMAINFILE).map -o $@ -L$(TMPDIR) -lm -lgcc -mthumb -Wl,--cref -Wl,--check-sections -Wl,--gc-sections -Wl,--entry=Reset_Handler -Wl,--unresolved-symbols=report-all -Wl,--warn-common -Wl,--warn-section-align -Wl,--warn-unresolved-symbols -Wl,--start-group $(TMPDIR)/core/syscalls_sam3.c.o $(MYOBJFILES) $(ADIR)/$(SAM)/variants/arduino_due_x/libsam_sam3x8e_gcc_rel.a $(TMPDIR)/core.a -Wl,--end-group
+	$(CXX) -Os -Wl,--gc-sections -mcpu=cortex-m3 -T$(HARDWARE)/$(SAM)/variants/arduino_due_x/linker_scripts/gcc/flash.ld -Wl,-Map,$(NEWMAINFILE).map -o $@ -L$(TMPDIR) -lm -lgcc -mthumb -Wl,--cref -Wl,--check-sections -Wl,--gc-sections -Wl,--entry=Reset_Handler -Wl,--unresolved-symbols=report-all -Wl,--warn-common -Wl,--warn-section-align -Wl,--warn-unresolved-symbols -Wl,--start-group $(TMPDIR)/core/syscalls_sam3.c.o $(MYOBJFILES) $(HARDWARE)/$(SAM)/variants/arduino_due_x/libsam_sam3x8e_gcc_rel.a $(TMPDIR)/core.a -Wl,--end-group
 
 #copy from the hex to our bin file (why?)
 $(TMPDIR)/$(PROJNAME).bin: $(TMPDIR)/$(PROJNAME).elf 
-	$(ADIR)/tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-objcopy -O binary $< $@
+	$(HARDWARE)/tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-objcopy -O binary $< $@
 
 #upload to the arduino by first resetting it (stty) and the running bossac
 upload: $(TMPDIR)/$(PROJNAME).bin
 	stty -F $(PORT) cs8 1200 hupcl
 	sleep 1
-	$(ADIR)/tools/bossac -U true -p $(notdir $(PORT)) -e -w $(VERIFY) -b $(TMPDIR)/$(PROJNAME).bin -R
+	$(HARDWARE)/tools/bossac -U true -p $(notdir $(PORT)) -e -w $(VERIFY) -b $(TMPDIR)/$(PROJNAME).bin -R
 
 #to view the serial port with screen.
 monitor:
