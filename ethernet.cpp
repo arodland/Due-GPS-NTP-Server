@@ -74,7 +74,7 @@ void ether_interrupt(uint32_t tm) {
       Udp.read(packet_buffer, sizeof(packet_buffer));
       SerialUSB.println(packet_buffer);
       Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-      Udp.write(packet_buffer);
+      Udp.write(packet_buffer, packet_size);
       Udp.endPacket();
     }
     packet_size = Udp.parsePacket();
