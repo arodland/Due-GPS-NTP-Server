@@ -24,6 +24,11 @@ PORT:=/dev/ttyACM0
 #if we want to verify the bossac upload, define this to -v
 VERIFY:=-v
 
+# Space-separated paths to libraries you want to include. If there are 
+# sub-directories in the library directory, you will have to include these also.
+MY_LIBS:=
+
+# End User-Specific settings
 
 #then some general settings. They should not be necessary to modify.
 CXX:=$(ADIR)/tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-g++
@@ -40,7 +45,9 @@ AR:=$(ADIR)/tools/gcc-arm-none-eabi-4.8.3-2014q1/bin/arm-none-eabi-ar
 #like olikraus does in his makefile.
 DEFINES:=-Dprintf=iprintf -DF_CPU=84000000L -DARDUINO=157 -D__SAM3X8E__ -DUSB_PID=0x003e -DUSB_VID=0x2341 -DUSBCON
 
-INCLUDES:=-I$(ADIR)/$(LIBSAM) -I$(ADIR)/$(CMSIS)/CMSIS/Include/ -I$(ADIR)/$(CMSIS)/Device/ATMEL/ -I$(ADIR)/$(SAM)/cores/arduino -I$(ADIR)/$(SAM)/variants/arduino_due_x
+INCLUDES:=-I$(ADIR)/$(LIBSAM) -I$(ADIR)/$(CMSIS)/CMSIS/Include/ -I$(ADIR)/$(CMSIS)/Device/ATMEL/
+INCLUDES += -I$(ADIR)/$(SAM)/cores/arduino -I$(ADIR)/$(SAM)/variants/arduino_due_x
+INCLUDES += $(patsubst %,-I%,$(MY_LIBS))
 
 #also include the current dir for convenience
 INCLUDES += -I.
@@ -58,7 +65,7 @@ PROJNAME:=$(shell basename *.ino .ino)
 NEWMAINFILE:=$(TMPDIR)/$(PROJNAME).ino.cpp
 
 #our own sourcefiles is the (converted) ino file and any local cpp files
-MYSRCFILES:=$(NEWMAINFILE) $(shell ls *.cpp 2>/dev/null)
+MYSRCFILES:=$(NEWMAINFILE) $(shell ls *.cpp 2>/dev/null) $(wildcard $(patsubst %,%/*.c,$(MY_LIBS))) $(wildcard $(patsubst %,%/*.cpp,$(MY_LIBS)))
 MYOBJFILES:=$(addsuffix .o,$(addprefix $(TMPDIR)/,$(notdir $(MYSRCFILES))))
 
 #These source files are the ones forming core.a
