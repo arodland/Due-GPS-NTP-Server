@@ -2,6 +2,8 @@
 
 #define Console SerialUSB
 #define GPS Serial1
+#define Rb Serial2
+
 #define DEBUG 1
 
 #define DHCP 0
