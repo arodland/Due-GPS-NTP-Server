@@ -51,12 +51,17 @@ void TC0_Handler() {
 }
 
 void TC1_Handler() {
+  static int first = 1;
   uint32_t status = TC0->TC_CHANNEL[1].TC_SR;
   if (status & TC_SR_LDRAS) {
     debug("CAPT: ");
     uint32_t tm = TC0->TC_CHANNEL[1].TC_RA;
     TC0->TC_CHANNEL[1].TC_RB;
     debug(tm); debug("\r\n");
+    if (first) {
+      timers_sync();
+      first = 0;
+    }
   }
 }
 
