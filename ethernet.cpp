@@ -36,6 +36,7 @@ void get_mac_address() {
 
 void ether_init() {
   get_mac_address();
+  delay(250);
 #if DHCP
   int ret = Ethernet.begin(mac);
   if (ret) {
