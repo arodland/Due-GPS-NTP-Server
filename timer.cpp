@@ -1,4 +1,5 @@
-#include <Arduino.h>
+#include "config.h"
+#include "debug.h"
 #include "ethernet.h"
 
 static void timer0_setup() {
@@ -39,8 +40,8 @@ void TC0_Handler() {
   static int ct = 0;
   uint32_t status = TC0->TC_CHANNEL[0].TC_SR;
   if (status & TC_SR_CPCS) {
-    SerialUSB.print("TICK: ");
-    SerialUSB.println(ct++);
+    debug("TICK: ");
+    debug(ct++); debug("\r\n");
   }
   if (status & TC_SR_LDRAS) {
     uint32_t tm = TC0->TC_CHANNEL[0].TC_RA;
@@ -52,10 +53,10 @@ void TC0_Handler() {
 void TC1_Handler() {
   uint32_t status = TC0->TC_CHANNEL[1].TC_SR;
   if (status & TC_SR_LDRAS) {
-    SerialUSB.print("CAPT: ");
+    debug("CAPT: ");
     uint32_t tm = TC0->TC_CHANNEL[1].TC_RA;
     TC0->TC_CHANNEL[1].TC_RB;
-    SerialUSB.println(tm);
+    debug(tm); debug("\r\n");
   }
 }
 

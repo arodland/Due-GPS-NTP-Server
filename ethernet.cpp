@@ -38,7 +38,17 @@ void ether_init() {
   get_mac_address();
 #if DHCP
   int ret = Ethernet.begin(mac);
-  if (!ret) {
+  if (ret) {
+    IPAddress ip = Ethernet.localIP();
+    debug("IP address: ");
+    for (int i = 0 ; i < 4 ; i++) {
+      debug(ip[i]);
+      if (i < 3)
+        debug(".");
+      else
+        debug("\r\n");
+    }
+  } else {
     debug("DHCP failed, Ethernet unavailable");
   }
 #else
@@ -80,13 +90,14 @@ void ether_recv() {
   int packet_size = Udp.parsePacket();
   do {
     if (packet_size > sizeof(packet_buffer)) {
-      SerialUSB.print("Packet too big");
+      debug("Packet too big");
     } else if (packet_size) {
-      SerialUSB.print(packet_size);
-      SerialUSB.print(" byte packet: ");
+      debug(packet_size);
+      debug(" byte packet: ");
       bzero(packet_buffer, sizeof(packet_buffer));
       Udp.read(packet_buffer, sizeof(packet_buffer));
-      SerialUSB.println(packet_buffer);
+      debug(packet_buffer);
+      debug("\r\n");
       Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
       Udp.write(packet_buffer, packet_size);
       Udp.endPacket();

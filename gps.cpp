@@ -5,30 +5,30 @@
 #include "debug.h"
 
 static inline int gps_can_read() {
-  return GPSPORT.available();
+  return GPS.available();
 }
 
 static inline int gps_read() {
-  return GPSPORT.read();
+  return GPS.read();
 }
 
 static inline void gps_write(const char *data) {
-  GPSPORT.print(data);
+  GPS.print(data);
 }
 
 static inline void gps_writebyte(const char ch) {
-  GPSPORT.write(ch);
+  GPS.write(ch);
 }
 
 static inline void gps_set_baud(long baud) {
-  GPSPORT.flush();
+  GPS.flush();
   delay(500);
-  GPSPORT.begin(baud);
-  GPSPORT.flush();
+  GPS.begin(baud);
+  GPS.flush();
 }
 
 void gps_init() {
-  GPSPORT.begin(4800);;
+  GPS.begin(4800);;
   gps_set_sirf();
   gps_enable_dgps();
 }

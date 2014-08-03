@@ -1,9 +1,10 @@
 #include "timer.h"
 #include "gps.h"
 #include "ethernet.h"
+#include "console.h"
 
 void setup() {
-  SerialUSB.begin(115200);
+  console_init();
   timer_init();
   gps_init();
   ether_init();
