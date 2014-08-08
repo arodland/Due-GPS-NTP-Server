@@ -2,6 +2,7 @@
 #include "config.h"
 #include "debug.h"
 #include "timer.h"
+#include "rb.h"
 
 static unsigned short gps_week = 0;
 static uint32_t tow_sec_utc = 0;
@@ -16,10 +17,8 @@ void time_set_date(unsigned short week, unsigned int gps_tow, short offset) {
   }
 }
 
-const uint32_t PLL_OFFSET_NS = 100000000L - PLL_FUDGE_NS;
-
 uint32_t make_ns(uint32_t tm, char *carry) {
-  uint32_t ns = tm * 100 + PLL_OFFSET_NS;
+  uint32_t ns = tm * 100;
   if (ns >= 1000000000L) {
     ns -= 1000000000L;
     if (carry)
@@ -45,7 +44,8 @@ inline uint32_t ntp_scale(uint32_t tm) {
 uint32_t make_ntp(uint32_t tm, int32_t fudge, char *carry) {
   uint32_t ntp = ntp_scale(tm);
   uint32_t ntp_augmented = ntp + fudge;
-  *carry = ntp_augmented < ntp ? 1 : 0;
+  if (carry)
+    *carry = ntp_augmented < ntp ? 1 : 0;
   return ntp_augmented;
 }
 
@@ -66,5 +66,34 @@ void second_int() {
     tow_sec_utc -= 604800UL;
     ++gps_week;
   }
+}
+
+void pll_run() {
+  static int pll_factor = 30;
+
+  int32_t pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL);
+  if (pps_ns > 500000000)
+    pps_ns -= 1000000000;
+
+  debug("PPS: ");
+  debug(pps_ns);
+  debug("\r\n");
+
+  int32_t rate;
+  if (pll_factor == 1000)
+    rate = -pps_ns;
+  else
+    rate = -(pps_ns / pll_factor) * 1000;
+/*  if (rate > 1000000)
+    rate = 1000000;
+  else if (rate < -1000000)
+    rate = -1000000; */
+  rb_set_frequency(rate);
+  int32_t rb_ppt = rb_get_ppt();
+  int32_t error = rate - rb_ppt;
+  timers_set_max((uint32_t)(10000000 - error / 100000));
+
+  if (pll_factor < 1000)
+    pll_factor++;
 }
 

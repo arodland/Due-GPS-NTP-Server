@@ -5,5 +5,6 @@ extern void time_set_date(unsigned short gps_week, unsigned int gps_tow_sec, sho
 extern void second_int();
 uint32_t time_get_ns(uint32_t tm, char *carry);
 void time_get_ntp(uint32_t tm, uint32_t *upper, uint32_t *lower, int32_t fudge);
+void pll_run();
 
 #endif

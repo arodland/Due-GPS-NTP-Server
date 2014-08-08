@@ -1,6 +1,8 @@
 #ifndef __TIMER_H
 #define __TIMER_H
 
+volatile extern char pps_int;
+
 extern void timer_init();
 
 static inline uint32_t timer_get_counter() {
@@ -19,5 +21,7 @@ static inline char timer_get_pending() {
 static inline uint32_t timer_get_capture() {
   return TC0->TC_CHANNEL[1].TC_RA;
 }
+
+extern void timers_set_max(uint32_t max);
 
 #endif

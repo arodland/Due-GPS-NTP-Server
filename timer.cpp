@@ -3,6 +3,8 @@
 #include "ethernet.h"
 #include "timing.h"
 
+volatile char pps_int = 0;
+
 static void timer0_setup() {
   pmc_enable_periph_clk(ID_TC0);
   TC_Configure(TC0, 0,
@@ -37,12 +39,14 @@ static void timers_sync() {
   TC0->TC_BCR = TC_BCR_SYNC;
 }
 
+void timers_set_max(uint32_t max) {
+  TC0->TC_CHANNEL[0].TC_RC = TC0->TC_CHANNEL[1].TC_RC = max;
+}
+
 void TC0_Handler() {
   static int ct = 0;
   uint32_t status = TC0->TC_CHANNEL[0].TC_SR;
   if (status & TC_SR_CPCS) {
-    debug("TICK: ");
-    debug(ct++); debug("\r\n");
     second_int();
   }
   if (status & TC_SR_LDRAS) {
@@ -63,6 +67,8 @@ void TC1_Handler() {
     if (first) {
       timers_sync();
       first = 0;
+    } else {
+      pps_int = 1;
     }
   }
 }

@@ -150,7 +150,8 @@ void do_ntp_request(unsigned char *buf, unsigned int len,
 unsigned char packet_buffer[256];
 
 void ether_recv() {
-  debug("ETHER INT\r\n");
+  if (ether_int)
+    debug("ETHER INT\r\n");
 
   int packet_size = Udp.parsePacket();
   do {
