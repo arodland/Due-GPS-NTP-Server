@@ -8,3 +8,5 @@
 
 #define DHCP 0
 #define IPADDRESS 192,168,1,202
+
+#define PLL_FUDGE_NS 0

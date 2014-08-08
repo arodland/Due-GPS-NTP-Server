@@ -1,6 +1,7 @@
 #include "config.h"
 #include "debug.h"
 #include "ethernet.h"
+#include "timing.h"
 
 static void timer0_setup() {
   pmc_enable_periph_clk(ID_TC0);
@@ -42,6 +43,7 @@ void TC0_Handler() {
   if (status & TC_SR_CPCS) {
     debug("TICK: ");
     debug(ct++); debug("\r\n");
+    second_int();
   }
   if (status & TC_SR_LDRAS) {
     uint32_t tm = TC0->TC_CHANNEL[0].TC_RA;

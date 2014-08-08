@@ -2,5 +2,6 @@
 #define __TIMING_H
 
 extern void time_set_date(unsigned short gps_week, unsigned int gps_tow_sec, short offset);
+extern void second_int();
 
 #endif
