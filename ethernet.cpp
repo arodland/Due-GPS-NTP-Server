@@ -1,5 +1,6 @@
 #include "config.h"
 #include "debug.h"
+#include "timing.h"
 #include <Ethernet.h>
 #include <EthernetUdp.h>
 #include <Wire.h>
@@ -9,7 +10,7 @@
 
 unsigned char mac[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 volatile char ether_int = 0;
-uint32_t packet_ts;
+uint32_t recv_ts_upper, recv_ts_lower;
 
 EthernetUDP Udp;
 
@@ -73,35 +74,92 @@ void clear_ether_interrupt() {
 
 void ether_interrupt(uint32_t tm) {
   if (!ether_int) {
-    packet_ts = tm;
+    time_get_ntp(tm, &recv_ts_upper, &recv_ts_lower, 0);
     ether_int = 1;
   }
 }
 
-char packet_buffer[256];
+static const char ntp_packet_template[48] = {
+  4 /* Mode: server reply */ | 3 << 3 /* Version: NTPv3 */,
+  1 /* Stratum */, 9 /* Poll: 512sec */, -23 /* Precision: 0.1 usec */,
+  0, 0, 0, 0 /* Root delay */,
+  0, 0, 0, 10 /* Root Dispersion */,
+  'G', 'P', 'S', 0 /* Reference ID */,
+  0, 0, 0, 0, 0, 0, 0, 0 /* Reference Timestamp */,
+  0, 0, 0, 0, 0, 0, 0, 0 /* Origin Timestamp */,
+  0, 0, 0, 0, 0, 0, 0, 0 /* Receive Timestamp */,
+  0, 0, 0, 0, 0, 0, 0, 0 /* Transmit Timestamp */
+};
+
+void do_ntp_request(unsigned char *buf, unsigned int len,
+    IPAddress ip, uint16_t port) {
+  unsigned char version = (buf[0] >> 3) & 7;
+  unsigned char mode = buf[0] & 7;
+
+  if (len < 48) {
+    debug("Not NTP\r\n");
+    return;
+  }
+
+  if (version != 3 && version != 4) {
+    debug("NTP unknown version\r\n");
+    return;
+  }
+
+  if (mode == 3) { /* Client request */
+    unsigned char reply[48];
+    uint32_t tx_ts_upper, tx_ts_lower;
+    memcpy(reply, ntp_packet_template, 48);
+    /* XXX set Leap Indicator */
+    /* Copy client transmit timestamp into origin timestamp */
+    memcpy(reply + 24, buf + 40, 8);
+    /* Copy receive timestamp into packet */
+    reply[32] = (recv_ts_upper >> 24) & 0xff;
+    reply[33] = (recv_ts_upper >> 16) & 0xff;
+    reply[34] = (recv_ts_upper >> 8) & 0xff;
+    reply[35] = (recv_ts_upper) & 0xff;
+    reply[36] = (recv_ts_lower >> 24) & 0xff;
+    reply[37] = (recv_ts_lower >> 16) & 0xff;
+    reply[38] = (recv_ts_lower >> 8) & 0xff;
+    reply[39] = (recv_ts_lower) & 0xff;
+    /* Copy top half of receive timestamp into reference timestamp --
+     * we update clock every second :)
+     */
+    memcpy(reply + 16, reply + 32, 4);
+
+    time_get_ntp(*TIMER_CLOCK, &tx_ts_upper, &tx_ts_lower, 0);
+    /* Copy tx timestamp into packet */
+    reply[40] = (tx_ts_upper >> 24) & 0xff;
+    reply[41] = (tx_ts_upper >> 16) & 0xff;
+    reply[42] = (tx_ts_upper >> 8) & 0xff;
+    reply[43] = (tx_ts_upper) & 0xff;
+    reply[44] = (tx_ts_lower >> 24) & 0xff;
+    reply[45] = (tx_ts_lower >> 16) & 0xff;
+    reply[46] = (tx_ts_lower >> 8) & 0xff;
+    reply[47] = (tx_ts_lower) & 0xff;
+
+    Udp.beginPacket(ip, port);
+    Udp.write(reply, 48);
+    Udp.endPacket();
+  } else {
+    debug("NTP unknown packet type\r\n");
+  }
+}
+
+
+unsigned char packet_buffer[256];
 
 void ether_recv() {
-  debug("ETHER INT: ");
-  debug(packet_ts);
-  debug(" Handled at: ");
-  uint32_t tm = TC0->TC_CHANNEL[0].TC_CV;
-  debug(tm);
-  debug("\r\n");
+  debug("ETHER INT\r\n");
 
   int packet_size = Udp.parsePacket();
   do {
     if (packet_size > sizeof(packet_buffer)) {
       debug("Packet too big");
     } else if (packet_size) {
-      debug(packet_size);
-      debug(" byte packet: ");
       bzero(packet_buffer, sizeof(packet_buffer));
       Udp.read(packet_buffer, sizeof(packet_buffer));
-      debug(packet_buffer);
-      debug("\r\n");
-      Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-      Udp.write(packet_buffer, packet_size);
-      Udp.endPacket();
+      do_ntp_request(packet_buffer, packet_size, Udp.remoteIP(), Udp.remotePort());
     }
     packet_size = Udp.parsePacket();
   } while (packet_size);

@@ -29,12 +29,8 @@ uint32_t make_ns(uint32_t tm, char *carry) {
   return ns;
 }
 
-uint32_t time_get_ns(char *carry) {
-  return make_ns(timer_get_counter(), carry);
-}
-
-uint32_t time_get_ns_capt(char *carry) {
-  return make_ns(timer_get_capture(), carry);
+uint32_t time_get_ns(uint32_t tm, char *carry) {
+  return make_ns(tm, carry);
 }
 
 inline uint32_t ntp_scale(uint32_t tm) {
@@ -53,14 +49,14 @@ uint32_t make_ntp(uint32_t tm, int32_t fudge, char *carry) {
   return ntp_augmented;
 }
 
-void time_get_ntp(uint32_t *upper, uint32_t *lower, int32_t fudge) {
+void time_get_ntp(uint32_t tm, uint32_t *upper, uint32_t *lower, int32_t fudge) {
   char carry;
 
   *upper = 2524953600UL; /* GPS epoch - NTP epoch in sec */
   *upper += gps_week * 604800UL; /* 1 week in sec */
   *upper += tow_sec_utc;
 
-  *lower = make_ntp(timer_get_counter(), fudge, &carry);
+  *lower = make_ntp(tm, fudge, &carry);
   *upper += carry;
 }
 
