@@ -68,14 +68,14 @@ void clear_ether_interrupt() {
   W5100.writeSnIR(1, 0xFF);
   W5100.writeSnIR(2, 0xFF);
   W5100.writeSnIR(3, 0xFF);
-  __enable_irq();
   ether_int = 0;
+  __enable_irq();
 }
 
 void ether_interrupt(uint32_t tm) {
   if (!ether_int) {
-    time_get_ntp(tm, &recv_ts_upper, &recv_ts_lower, 0);
     ether_int = 1;
+    time_get_ntp(tm, &recv_ts_upper, &recv_ts_lower, 0);
   }
 }
 
