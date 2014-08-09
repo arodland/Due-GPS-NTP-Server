@@ -69,7 +69,9 @@ void second_int() {
 }
 
 void pll_run() {
-  static int pll_factor = 30;
+  static int startup = 1;
+  static int startup_timer = 0;
+  static int pll_factor = 10;
 
   int32_t pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL);
   if (pps_ns > 500000000)
@@ -88,12 +90,19 @@ void pll_run() {
     rate = 1000000;
   else if (rate < -1000000)
     rate = -1000000; */
-  rb_set_frequency(rate);
+  rb_set_frequency(startup ? 0 : rate);
   int32_t rb_ppt = rb_get_ppt();
   int32_t error = rate - rb_ppt;
   timers_set_max((uint32_t)(10000000 - error / 100000));
 
-  if (pll_factor < 1000)
-    pll_factor++;
+  if (startup) {
+    startup_timer ++;
+    if (startup_timer == 60) {
+      startup = 0;
+      pll_factor = 100;
+    }
+  } else if (pll_factor < 1000) {
+    pll_factor ++;
+  }
 }
 
