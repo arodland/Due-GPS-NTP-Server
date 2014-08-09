@@ -1,6 +1,9 @@
 #include "config.h"
 #include "debug.h"
 #include "ethernet.h"
+#include "timing.h"
+
+volatile char pps_int = 0;
 
 // TC0 Ch0 is driven by the RB, generates a 1Hz interrupt,
 // and timestamps incoming Ethernet packets (rising signal on pin 2)
@@ -40,12 +43,15 @@ static void timers_sync() {
   TC0->TC_BCR = TC_BCR_SYNC;
 }
 
+void timers_set_max(uint32_t max) {
+  TC0->TC_CHANNEL[0].TC_RC = TC0->TC_CHANNEL[1].TC_RC = max;
+}
+
 void TC0_Handler() {
   static int ct = 0;
   uint32_t status = TC0->TC_CHANNEL[0].TC_SR;
   if (status & TC_SR_CPCS) { // On RC compare (1Hz)
-    debug("TICK: ");
-    debug(ct++); debug("\r\n");
+    second_int();
   }
   if (status & TC_SR_LDRAS) { // On falling edge of ethernet int
     uint32_t tm = TC0->TC_CHANNEL[0].TC_RA;
@@ -55,12 +61,19 @@ void TC0_Handler() {
 }
 
 void TC1_Handler() {
+  static int first = 1;
   uint32_t status = TC0->TC_CHANNEL[1].TC_SR;
   if (status & TC_SR_LDRAS) { // On rising edge of PPS
     debug("CAPT: ");
     uint32_t tm = TC0->TC_CHANNEL[1].TC_RA;
     TC0->TC_CHANNEL[1].TC_RB;
     debug(tm); debug("\r\n");
+    if (first) {
+      timers_sync();
+      first = 0;
+    } else {
+      pps_int = 1;
+    }
   }
 }
 

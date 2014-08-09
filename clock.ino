@@ -1,5 +1,6 @@
 #include "config.h"
 #include "timer.h"
+#include "timing.h"
 #include "gps.h"
 #include "ethernet.h"
 #include "console.h"
@@ -14,14 +15,18 @@ void setup() {
 }
 
 void loop() {
-  gps_poll();
-  if (ether_int) {
-    ether_recv();
+  if (pps_int) {
+    pps_int = 0;
+    pll_run();
   }
-  if (Rb.available()) {
+  gps_poll();
+//  if (ether_int) {
+    ether_recv();
+//  }
+/*  if (Rb.available()) {
     Console.write(Rb.read());
   }
   if (Console.available()) {
     Rb.write(Console.read());
-  }
+  } */
 }
