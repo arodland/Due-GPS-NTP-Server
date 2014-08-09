@@ -77,7 +77,7 @@ void pll_run() {
   static int32_t fll_offset = 0;
   static int32_t fll_history[1000];
   static uint16_t fll_history_len = 0;
-  static uint16_t fll_idx;
+  static uint16_t fll_idx = 0;
 
   int32_t pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL);
   if (pps_ns > 500000000)
@@ -91,11 +91,22 @@ void pll_run() {
 
   if (!startup) {
     fll_offset += prev_rate - 1000 * (pps_ns - prev_pps_ns);
-    debug("FLLO: "); debug(fll_offset); debug("\r\n");
+    debug("FLLO["); debug(fll_idx); debug("]: "); debug(fll_offset);
 
     if (fll_history_len >= 100) {
-      fll_rate = (fll_offset - fll_history[(fll_idx - fll_history_len) % 1000]) / fll_history_len;
+      static int16_t lag, fll_prev;
+      if (fll_history_len == 1000) {
+        lag = 1000;
+        fll_prev = fll_idx;
+      } else {
+        lag = 100;
+        fll_prev = fll_idx - 100;
+      }
+      debug(" FLLOP["); debug(fll_prev); debug("]: ");
+      debug(fll_history[fll_prev]);
+      fll_rate = (fll_offset - fll_history[fll_prev]) / lag;
     }
+    debug("\r\n");
   }
 
   int32_t slew_rate;
