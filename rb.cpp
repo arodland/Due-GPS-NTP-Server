@@ -30,9 +30,6 @@ void rb_set_frequency(int32_t ppt) {
     Rb.print(tenths);
   }
   Rb.print("\r\n");
-  debug("PLL: ");
-  debug(ppt);
-  debug("\r\n");
 
   rb_ppt = ppt;
 }

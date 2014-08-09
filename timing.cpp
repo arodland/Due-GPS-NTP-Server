@@ -72,6 +72,12 @@ void pll_run() {
   static int startup = 1;
   static int startup_timer = 0;
   static int pll_factor = 10;
+  static int32_t prev_pps_ns = 0;
+  static int32_t prev_rate = 0;
+  static int32_t fll_offset = 0;
+  static int32_t fll_history[1000];
+  static uint16_t fll_history_len = 0;
+  static uint16_t fll_idx;
 
   int32_t pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL);
   if (pps_ns > 500000000)
@@ -81,19 +87,43 @@ void pll_run() {
   debug(pps_ns);
   debug("\r\n");
 
-  int32_t rate;
+  int32_t fll_rate = 0;
+
+  if (!startup) {
+    fll_offset += prev_rate - 1000 * (pps_ns - prev_pps_ns);
+    debug("FLLO: "); debug(fll_offset); debug("\r\n");
+
+    if (fll_history_len >= 100) {
+      fll_rate = (fll_offset - fll_history[(fll_idx - fll_history_len) % 1000]) / fll_history_len;
+    }
+  }
+
+  int32_t slew_rate;
   if (pll_factor == 1000)
-    rate = -pps_ns;
+    slew_rate = -pps_ns;
   else
-    rate = -(pps_ns / pll_factor) * 1000;
+    slew_rate = -(pps_ns / pll_factor) * 1000;
+
+  int32_t rate = slew_rate + fll_rate;
+
 /*  if (rate > 1000000)
     rate = 1000000;
   else if (rate < -1000000)
     rate = -1000000; */
   rb_set_frequency(startup ? 0 : rate);
-  int32_t rb_ppt = rb_get_ppt();
-  int32_t error = rate - rb_ppt;
-  timers_set_max((uint32_t)(10000000 - error / 100000));
+  int32_t rb_rate = rb_get_ppt();
+  int32_t dds_rate = rate - rb_rate;
+  timers_set_max((uint32_t)(10000000 - dds_rate / 100000));
+
+  debug(slew_rate); debug(" PLL + "); debug(fll_rate); debug(" FLL = "); debug(rate);
+  debug(" [ "); debug(rb_rate); debug(" Rb + "); debug(dds_rate); debug(" digital ]\r\n");
+
+  if (!startup) {
+    fll_history[fll_idx] = fll_offset;
+    fll_idx = (fll_idx + 1) % 1000;
+    if (fll_history_len < 1000)
+      fll_history_len ++;
+  }
 
   if (startup) {
     startup_timer ++;
@@ -104,5 +134,7 @@ void pll_run() {
   } else if (pll_factor < 1000) {
     pll_factor ++;
   }
+  prev_pps_ns = pps_ns;
+  prev_rate = rate;
 }
 
