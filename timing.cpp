@@ -4,6 +4,9 @@
 #include "timer.h"
 #include "rb.h"
 
+#define PLL_OFFSET_NS 1953125 /* 1/512 sec */
+#define PLL_OFFSET_NTP 8388608 /* 1/512 sec */
+
 static unsigned short gps_week = 0;
 static uint32_t tow_sec_utc = 0;
 
@@ -18,7 +21,7 @@ void time_set_date(unsigned short week, unsigned int gps_tow, short offset) {
 }
 
 uint32_t make_ns(uint32_t tm, char *carry) {
-  uint32_t ns = tm * 100;
+  uint32_t ns = tm * 100 + PLL_OFFSET_NS;
   if (ns >= 1000000000L) {
     ns -= 1000000000L;
     if (carry)
@@ -43,7 +46,7 @@ inline uint32_t ntp_scale(uint32_t tm) {
 
 uint32_t make_ntp(uint32_t tm, int32_t fudge, char *carry) {
   uint32_t ntp = ntp_scale(tm);
-  uint32_t ntp_augmented = ntp + fudge;
+  uint32_t ntp_augmented = ntp + fudge + PLL_OFFSET_NTP;
   if (carry)
     *carry = ntp_augmented < ntp ? 1 : 0;
   return ntp_augmented;
