@@ -113,7 +113,7 @@ void pll_run() {
   if (pll_factor == 1000)
     slew_rate = -pps_ns;
   else
-    slew_rate = -(pps_ns / pll_factor) * 1000;
+    slew_rate = -pps_ns * 1000 / pll_factor;
 
   int32_t rate = slew_rate + fll_rate;
 
