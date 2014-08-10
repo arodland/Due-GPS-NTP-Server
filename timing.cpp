@@ -94,13 +94,17 @@ void pll_run() {
     debug("FLLO["); debug(fll_idx); debug("]: "); debug(fll_offset);
 
     if (fll_history_len >= 100) {
-      static int16_t lag, fll_prev;
-      if (fll_history_len == 1000) {
-        lag = 1000;
+      static int16_t lag = 100, fll_prev;
+      if (lag == 1000) {
         fll_prev = fll_idx;
       } else {
-        lag = 100;
-        fll_prev = fll_idx - 100;
+        if (fll_idx % 2)
+          lag++;
+        fll_prev = fll_idx - lag;
+        if (fll_prev < 0)
+          fll_prev += 1000;
+        else if (fll_prev >= 1000)
+          fll_prev -= 1000;
       }
       debug(" FLLOP["); debug(fll_prev); debug("]: ");
       debug(fll_history[fll_prev]);
