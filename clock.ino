@@ -20,9 +20,9 @@ void loop() {
     pll_run();
   }
   gps_poll();
-//  if (ether_int) {
+  if (ether_int) {
     ether_recv();
-//  }
+  }
 /*  if (Rb.available()) {
     Console.write(Rb.read());
   }

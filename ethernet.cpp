@@ -35,6 +35,15 @@ void get_mac_address() {
 }
 
 
+void ether_interrupt() {
+  __disable_irq();
+  if (!ether_int) {
+    ether_int = 1;
+    time_get_ntp(*TIMER_CLOCK, &recv_ts_upper, &recv_ts_lower, 0);
+  }
+  __enable_irq();
+}
+
 void ether_init() {
   get_mac_address();
   delay(250);
@@ -57,6 +66,7 @@ void ether_init() {
   IPAddress ip(IPADDRESS);
   Ethernet.begin(mac, ip);
 #endif
+  attachInterrupt(2, ether_interrupt, FALLING);
   W5100.writeIMR(0x0F); // Enable interrupts
   Udp.begin(123);
 }
@@ -70,13 +80,6 @@ void clear_ether_interrupt() {
   W5100.writeSnIR(3, 0xFF);
   ether_int = 0;
   __enable_irq();
-}
-
-void ether_interrupt(uint32_t tm) {
-  if (!ether_int) {
-    ether_int = 1;
-    time_get_ntp(tm, &recv_ts_upper, &recv_ts_lower, 0);
-  }
 }
 
 static const char ntp_packet_template[48] = {
