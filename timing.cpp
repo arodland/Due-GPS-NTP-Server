@@ -75,10 +75,11 @@ void pll_run() {
   static int startup = 1;
   static int startup_timer = 0;
   static int pll_factor = 10;
+  static int32_t pll_accum = 0;
   static int32_t prev_pps_ns = 0;
   static int32_t prev_rate = 0;
   static int32_t fll_offset = 0;
-  static int32_t fll_history[1000];
+  static int32_t fll_history[4000];
   static uint16_t fll_history_len = 0;
   static uint16_t fll_idx = 0;
 
@@ -98,16 +99,16 @@ void pll_run() {
 
     if (fll_history_len >= 100) {
       static int16_t lag = 100, fll_prev;
-      if (lag == 1000) {
+      if (lag == 4000) {
         fll_prev = fll_idx;
       } else {
-        if (fll_idx % 2)
+        if (fll_idx % 4)
           lag++;
         fll_prev = fll_idx - lag;
         if (fll_prev < 0)
-          fll_prev += 1000;
-        else if (fll_prev >= 1000)
-          fll_prev -= 1000;
+          fll_prev += 4000;
+        else if (fll_prev >= 4000)
+          fll_prev -= 4000;
       }
       debug(" FLLOP["); debug(fll_prev); debug("]: ");
       debug(fll_history[fll_prev]);
@@ -116,11 +117,8 @@ void pll_run() {
     debug("\r\n");
   }
 
-  int32_t slew_rate;
-  if (pll_factor == 1000)
-    slew_rate = -pps_ns;
-  else
-    slew_rate = -pps_ns * 1000 / pll_factor;
+  pll_accum -= pps_ns * 1000;
+  int32_t slew_rate = pll_accum / pll_factor;
 
   int32_t rate = slew_rate + fll_rate;
 
@@ -133,23 +131,24 @@ void pll_run() {
   int32_t dds_rate = rate - rb_rate;
   timers_set_max((uint32_t)(10000000 - dds_rate / 100000));
 
+  pll_accum -= (slew_rate - (dds_rate % 100000)) * pll_factor;
+
   debug(slew_rate); debug(" PLL + "); debug(fll_rate); debug(" FLL = "); debug(rate);
   debug(" [ "); debug(rb_rate); debug(" Rb + "); debug(dds_rate); debug(" digital ]\r\n");
 
   if (!startup) {
     fll_history[fll_idx] = fll_offset;
-    fll_idx = (fll_idx + 1) % 1000;
-    if (fll_history_len < 1000)
+    fll_idx = (fll_idx + 1) % 4000;
+    if (fll_history_len < 4000)
       fll_history_len ++;
   }
 
   if (startup) {
-    startup_timer ++;
-    if (startup_timer == 60) {
+    if (slew_rate > -100000 && slew_rate < 100000) {
       startup = 0;
       pll_factor = 100;
     }
-  } else if (pll_factor < 1000) {
+  } else if (pll_factor < 4000) {
     pll_factor ++;
   }
   prev_pps_ns = pps_ns;
