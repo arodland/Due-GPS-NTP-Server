@@ -4,9 +4,6 @@
 #include "timer.h"
 #include "rb.h"
 
-#define PLL_OFFSET_NS 1345400
-#define PLL_OFFSET_NTP 5778449
-
 static unsigned short gps_week = 0;
 static uint32_t tow_sec_utc = 0;
 
@@ -21,7 +18,7 @@ void time_set_date(unsigned short week, unsigned int gps_tow, short offset) {
 }
 
 uint32_t make_ns(uint32_t tm, char *carry) {
-  uint32_t ns = tm * 100 + PLL_OFFSET_NS;
+  uint32_t ns = tm * 100 + PPS_OFFSET_NS;
   if (ns >= 1000000000L) {
     ns -= 1000000000L;
     if (carry)
@@ -46,7 +43,7 @@ inline uint32_t ntp_scale(uint32_t tm) {
 
 uint32_t make_ntp(uint32_t tm, int32_t fudge, char *carry) {
   uint32_t ntp = ntp_scale(tm);
-  uint32_t ntp_augmented = ntp + fudge + PLL_OFFSET_NTP;
+  uint32_t ntp_augmented = ntp + fudge + PPS_OFFSET_NTP;
   if (carry)
     *carry = ntp_augmented < ntp ? 1 : 0;
   return ntp_augmented;
@@ -97,18 +94,18 @@ void pll_run() {
     fll_offset += prev_rate - 1000 * (pps_ns - prev_pps_ns);
     debug("FLLO["); debug(fll_idx); debug("]: "); debug(fll_offset);
 
-    if (fll_history_len >= 100) {
-      static int16_t lag = 100, fll_prev;
-      if (lag == 4000) {
+    if (fll_history_len >= FLL_MIN_LEN) {
+      static int16_t lag = FLL_MIN_LEN, fll_prev;
+      if (lag == FLL_MAX_LEN) {
         fll_prev = fll_idx;
       } else {
         if (fll_idx % 4)
           lag++;
         fll_prev = fll_idx - lag;
         if (fll_prev < 0)
-          fll_prev += 4000;
-        else if (fll_prev >= 4000)
-          fll_prev -= 4000;
+          fll_prev += FLL_MAX_LEN;
+        else if (fll_prev >= FLL_MAX_LEN)
+          fll_prev -= FLL_MAX_LEN;
       }
       debug(" FLLOP["); debug(fll_prev); debug("]: ");
       debug(fll_history[fll_prev]);
@@ -122,10 +119,6 @@ void pll_run() {
 
   int32_t rate = slew_rate + fll_rate;
 
-/*  if (rate > 1000000)
-    rate = 1000000;
-  else if (rate < -1000000)
-    rate = -1000000; */
   rb_set_frequency(startup ? 0 : rate);
   int32_t rb_rate = rb_get_ppt();
   int32_t dds_rate = rate - rb_rate;
@@ -138,17 +131,17 @@ void pll_run() {
 
   if (!startup) {
     fll_history[fll_idx] = fll_offset;
-    fll_idx = (fll_idx + 1) % 4000;
-    if (fll_history_len < 4000)
+    fll_idx = (fll_idx + 1) % FLL_MAX_LEN;
+    if (fll_history_len < FLL_MAX_LEN)
       fll_history_len ++;
   }
 
   if (startup) {
-    if (slew_rate > -100000 && slew_rate < 100000) {
+    if (slew_rate > -PLL_STARTUP_THRESHOLD && slew_rate < PLL_STARTUP_THRESHOLD) {
       startup = 0;
-      pll_factor = 100;
+      pll_factor = PLL_MIN_FACTOR;
     }
-  } else if (pll_factor < 4000) {
+  } else if (pll_factor < PLL_MAX_FACTOR) {
     pll_factor ++;
   }
   prev_pps_ns = pps_ns;
