@@ -21,13 +21,30 @@ static void timer1_setup() {
   NVIC_EnableIRQ(TC1_IRQn);                    // Enable IRQ (TC1_Handler)
 }
 
+static void timer0_setup() {
+  pmc_enable_periph_clk(ID_TC0);
+  TC_Configure(TC0, 0,
+    TC_CMR_TCCLKS_XC0 |          // XC0 = TCLK0 = PB26 = pin 22
+    TC_CMR_WAVSEL_UP_RC |        // Count up to RC then reset to 0
+    TC_CMR_WAVE |                // Generate output waveform
+    TC_CMR_EEVT_XC1 |            // Let TIOB be an output
+    TC_CMR_BCPB_SET |            // Rising on RB compare (TIOB = PB27 = LED pin 13)
+    TC_CMR_BCPC_CLEAR            // Falling on RC compare
+  );
+  TC0->TC_CHANNEL[0].TC_IER = 0;  // No interrupts
+  TC0->TC_CHANNEL[0].TC_IDR = ~0; // No interrupts
+  TC0->TC_CHANNEL[0].TC_CCR = TC_CCR_CLKEN;                    // Enable clock
+  TC0->TC_CHANNEL[0].TC_RC = 10000000;                         // Period = 1 second
+  TC0->TC_CHANNEL[0].TC_RB = 10000000 - (PPS_OFFSET_NS / 100); // Drive high at top of second
+}
+
 static void timers_sync() {
   // Loading this register resets all three channels of TC0 to 0 and starts them
   TC0->TC_BCR = TC_BCR_SYNC;
 }
 
 void timers_set_max(uint32_t max) {
-  TC0->TC_CHANNEL[1].TC_RC = max;
+  TC0->TC_CHANNEL[0].TC_RC = TC0->TC_CHANNEL[1].TC_RC = max;
 }
 
 void TC1_Handler() {
@@ -51,6 +68,7 @@ void TC1_Handler() {
 }
 
 void timer_init() {
+  timer0_setup();
   timer1_setup();
   timers_sync();
 }
