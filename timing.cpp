@@ -80,7 +80,7 @@ void pll_run() {
   static uint16_t fll_history_len = 0;
   static uint16_t fll_idx = 0;
 
-  int32_t pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL);
+  int32_t pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL) + PPS_FUDGE_NS;
   if (pps_ns > 500000000)
     pps_ns -= 1000000000;
 

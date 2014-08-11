@@ -17,6 +17,7 @@
 
 #define PPS_OFFSET_NS 1345400
 #define PPS_OFFSET_NTP 5778449
+#define PPS_FUDGE_NS -550
 
 #define FLL_MIN_LEN 100
 #define FLL_MAX_LEN 4000
