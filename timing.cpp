@@ -4,8 +4,8 @@
 #include "timer.h"
 #include "rb.h"
 
-#define PLL_OFFSET_NS 1953125 /* 1/512 sec */
-#define PLL_OFFSET_NTP 8388608 /* 1/512 sec */
+#define PLL_OFFSET_NS 1345400
+#define PLL_OFFSET_NTP 5778449
 
 static unsigned short gps_week = 0;
 static uint32_t tow_sec_utc = 0;
