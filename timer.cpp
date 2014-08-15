@@ -11,8 +11,7 @@ static void timer1_setup() {
   TC_Configure(TC0, 1,
     TC_CMR_TCCLKS_XC0 |          // XC0 = TCLK0 = PB26 = pin 22
     TC_CMR_WAVSEL_UP_RC |        // Count up to RC then reset to 0
-    TC_CMR_LDRA_RISING |         // Load RA and generate interrupt on rising edge of TIOA1 (PA2 = pin A7)
-    TC_CMR_CPCTRG                // Generate trigger to allow reloading of RA on RC compare
+    TC_CMR_LDRA_RISING           // Load RA and generate interrupt on rising edge of TIOA1 (PA2 = pin A7)
   );
   TC0->TC_CHANNEL[1].TC_IER = TC_IER_LDRAS | TC_IER_CPCS;    // Generate interrupt on RA load and 1Hz
   TC0->TC_CHANNEL[1].TC_IDR = ~(TC_IER_LDRAS | TC_IER_CPCS);
