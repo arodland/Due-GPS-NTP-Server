@@ -121,10 +121,13 @@ void pll_run() {
 
   rb_set_frequency(startup ? 0 : rate);
   int32_t rb_rate = rb_get_ppt();
+  rb_rate = 2 * (rb_rate / 2); /* Rb granularity is 2ppt */
   int32_t dds_rate = rate - rb_rate;
-  timers_set_max((uint32_t)(10000000 - dds_rate / 100000));
+  int32_t timer_offs = dds_rate / 100000;
+  dds_rate = 100000 * timer_offs; /* Timer granularity is 100ppb */
+  timers_set_max((uint32_t) 10000000 - timer_offs);
 
-  pll_accum -= (slew_rate - (dds_rate - 100000 * (dds_rate / 100000))) * pll_factor;
+  pll_accum -= (rb_rate + dds_rate - fll_rate) * pll_factor;
 
   debug(slew_rate); debug(" PLL + "); debug(fll_rate); debug(" FLL = "); debug(rate);
   debug(" [ "); debug(rb_rate); debug(" Rb + "); debug(dds_rate); debug(" digital ]\r\n");
