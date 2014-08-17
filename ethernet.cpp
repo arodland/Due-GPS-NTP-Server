@@ -8,6 +8,9 @@
 
 #define I2C_ADDRESS 0x50
 
+const int32_t NTP_FUDGE_RX = (NTP_FUDGE_RX_US * 429497) / 100;
+const int32_t NTP_FUDGE_TX = (NTP_FUDGE_TX_US * 429497) / 100;
+
 unsigned char mac[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 volatile char ether_int = 0;
 uint32_t recv_ts_upper, recv_ts_lower;
@@ -39,7 +42,7 @@ void ether_interrupt() {
   __disable_irq();
   if (!ether_int) {
     ether_int = 1;
-    time_get_ntp(*TIMER_CLOCK, &recv_ts_upper, &recv_ts_lower, 0);
+    time_get_ntp(*TIMER_CLOCK, &recv_ts_upper, &recv_ts_lower, NTP_FUDGE_RX);
   }
   __enable_irq();
 }
@@ -131,7 +134,7 @@ void do_ntp_request(unsigned char *buf, unsigned int len,
      */
     memcpy(reply + 16, reply + 32, 4);
 
-    time_get_ntp(*TIMER_CLOCK, &tx_ts_upper, &tx_ts_lower, 0);
+    time_get_ntp(*TIMER_CLOCK, &tx_ts_upper, &tx_ts_lower, NTP_FUDGE_TX);
     /* Copy tx timestamp into packet */
     reply[40] = (tx_ts_upper >> 24) & 0xff;
     reply[41] = (tx_ts_upper >> 16) & 0xff;
