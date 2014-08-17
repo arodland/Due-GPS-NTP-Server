@@ -124,7 +124,7 @@ void pll_run() {
   int32_t dds_rate = rate - rb_rate;
   timers_set_max((uint32_t)(10000000 - dds_rate / 100000));
 
-  pll_accum -= (slew_rate - (dds_rate % 100000)) * pll_factor;
+  pll_accum -= (slew_rate - (dds_rate - 100000 * (dds_rate / 100000))) * pll_factor;
 
   debug(slew_rate); debug(" PLL + "); debug(fll_rate); debug(" FLL = "); debug(rate);
   debug(" [ "); debug(rb_rate); debug(" Rb + "); debug(dds_rate); debug(" digital ]\r\n");
