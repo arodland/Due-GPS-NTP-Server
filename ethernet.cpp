@@ -47,25 +47,26 @@ void ether_interrupt() {
 void ether_init() {
   get_mac_address();
   delay(250);
+  IPAddress ip;
 #if DHCP
   int ret = Ethernet.begin(mac);
   if (ret) {
-    IPAddress ip = Ethernet.localIP();
-    debug("IP address: ");
-    for (int i = 0 ; i < 4 ; i++) {
-      debug(ip[i]);
-      if (i < 3)
-        debug(".");
-      else
-        debug("\r\n");
-    }
+    ip = Ethernet.localIP();
   } else {
     debug("DHCP failed, Ethernet unavailable");
   }
 #else
-  IPAddress ip(IPADDRESS);
+  ip = IPAddress(IPADDRESS);
   Ethernet.begin(mac, ip);
 #endif
+  debug("IP address: ");
+  for (int i = 0 ; i < 4 ; i++) {
+    debug(ip[i]);
+    if (i < 3)
+      debug(".");
+    else
+      debug("\r\n");
+  }
   attachInterrupt(2, ether_interrupt, FALLING);
   W5100.writeIMR(0x0F); // Enable interrupts
   Udp.begin(123);
