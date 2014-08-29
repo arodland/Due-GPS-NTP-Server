@@ -11,9 +11,9 @@ void rb_init() {
 }
 
 /* Parts per trillion -- one billion of these is 1ppm. */
-void rb_set_frequency(int32_t ppt) {
+int32_t rb_set_frequency(int32_t ppt) {
   if (ppt == rb_ppt)
-    return;
+    return rb_ppt;
   if (ppt > rb_ppt + 2000)
     ppt = rb_ppt + 2000;
   else if (ppt < rb_ppt - 2000)
@@ -32,9 +32,6 @@ void rb_set_frequency(int32_t ppt) {
   Rb.print("\r\n");
 
   rb_ppt = ppt;
-}
-
-int32_t rb_get_ppt() {
   return rb_ppt;
 }
 

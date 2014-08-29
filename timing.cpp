@@ -79,6 +79,7 @@ void pll_run() {
   static int32_t fll_history[4000];
   static uint16_t fll_history_len = 0;
   static uint16_t fll_idx = 0;
+  static uint16_t lag = FLL_MIN_LEN;
 
   int32_t pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL) + PPS_FUDGE_NS;
   if (pps_ns > 500000000)
@@ -94,13 +95,11 @@ void pll_run() {
     fll_offset += prev_rate - 1000 * (pps_ns - prev_pps_ns);
     debug("FLLO["); debug(fll_idx); debug("]: "); debug(fll_offset);
 
-    if (fll_history_len >= FLL_MIN_LEN) {
-      static int16_t lag = FLL_MIN_LEN, fll_prev;
+    if (fll_history_len >= lag) {
+      static int16_t fll_prev;
       if (lag == FLL_MAX_LEN) {
         fll_prev = fll_idx;
       } else {
-        if (fll_idx % 4)
-          lag++;
         fll_prev = fll_idx - lag;
         if (fll_prev < 0)
           fll_prev += FLL_MAX_LEN;
@@ -119,33 +118,40 @@ void pll_run() {
 
   int32_t rate = slew_rate + fll_rate;
 
-  rb_set_frequency(startup ? 0 : rate);
-  int32_t rb_rate = rb_get_ppt();
+  int32_t rb_rate = startup ? 0 : rate;
   rb_rate = 2 * (rb_rate / 2); /* Rb granularity is 2ppt */
+  rb_rate = rb_set_frequency(rb_rate);
   int32_t dds_rate = rate - rb_rate;
-  int32_t timer_offs = dds_rate / 100000;
+  int32_t timer_offs = (dds_rate + (dds_rate > 0 ? 50000 : -50000)) / 100000;
   dds_rate = 100000 * timer_offs; /* Timer granularity is 100ppb */
   timers_set_max((uint32_t) 10000000 - timer_offs);
-
-  pll_accum -= (rb_rate + dds_rate - fll_rate) * pll_factor;
 
   debug(slew_rate); debug(" PLL + "); debug(fll_rate); debug(" FLL = "); debug(rate);
   debug(" [ "); debug(rb_rate); debug(" Rb + "); debug(dds_rate); debug(" digital ]\r\n");
 
-  if (!startup) {
-    fll_history[fll_idx] = fll_offset;
-    fll_idx = (fll_idx + 1) % FLL_MAX_LEN;
-    if (fll_history_len < FLL_MAX_LEN)
-      fll_history_len ++;
-  }
+  pll_accum -= (rb_rate + dds_rate - fll_rate) * pll_factor;
 
   if (startup) {
     if (slew_rate > -PLL_STARTUP_THRESHOLD && slew_rate < PLL_STARTUP_THRESHOLD) {
       startup = 0;
       pll_factor = PLL_MIN_FACTOR;
     }
-  } else if (pll_factor < PLL_MAX_FACTOR) {
+  } else if (slew_rate < -PLL_STARTUP_THRESHOLD * 2 || slew_rate > PLL_STARTUP_THRESHOLD * 2) {
+    startup = 1;
+    pll_factor = PLL_STARTUP_FACTOR;
+    fll_history_len = 0;
+    lag = FLL_MIN_LEN;
+  }  else {
+    if (pll_factor < PLL_MAX_FACTOR) {
     pll_factor ++;
+    }
+
+    fll_history[fll_idx] = fll_offset;
+    fll_idx = (fll_idx + 1) % FLL_MAX_LEN;
+    if (fll_history_len < FLL_MAX_LEN)
+      fll_history_len ++;
+    if (lag < fll_history_len && fll_idx % 4)
+      lag++;
   }
   prev_pps_ns = pps_ns;
   prev_rate = rate;
