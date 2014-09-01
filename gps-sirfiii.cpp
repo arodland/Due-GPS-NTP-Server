@@ -6,6 +6,23 @@
 #include "timing.h"
 #include "debug.h"
 
+#define GPS_BUFFER_SIZE 256
+
+enum gps_state_t {
+  GPS_HEADER1,    // 0
+  GPS_HEADER2,    // 1
+  GPS_LENGTH1,    // 2
+  GPS_LENGTH2,    // 3
+  GPS_PAYLOAD,    // 4
+  GPS_CHECKSUM1,  // 5
+  GPS_CHECKSUM2,  // 6
+  GPS_TRAILER1,   // 7
+  GPS_TRAILER2,   // 8
+};
+
+static void gps_set_sirf();
+static void gps_enable_dgps();
+
 static inline int gps_can_read() {
   return GPS.available();
 }
