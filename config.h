@@ -4,6 +4,9 @@
 #define GPS Serial1
 #define Rb Serial2
 
+#define GPS_SIRFIII 1
+#define GPS_TSIP 0
+
 #define DEBUG 1
 
 #define DHCP 0

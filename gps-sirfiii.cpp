@@ -1,5 +1,7 @@
-#include <Arduino.h>
 #include "config.h"
+#if GPS_SIRFIII
+
+#include <Arduino.h>
 #include "gps.h"
 #include "timing.h"
 #include "debug.h"
@@ -410,3 +412,5 @@ void gps_handle_message() {
       break;
   }
 }
+
+#endif
