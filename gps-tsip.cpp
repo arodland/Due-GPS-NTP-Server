@@ -73,19 +73,6 @@ static unsigned int gps_payload_len;
 static unsigned char gps_payload[GPS_BUFFER_SIZE];
 static unsigned char *gps_payload_ptr;
 
-int gps_utc_offset(unsigned int hour, unsigned int minute, unsigned int second, unsigned int tow_second) {
-  unsigned int utc_tod = hour * 3600L + minute * 60L + second;
-  unsigned int gps_tod = tow_second % 86400L;
-  int utc_offset = utc_tod - gps_tod;
-
-  if (utc_offset > 43200L)
-    utc_offset -= 86400L;
-  if (utc_offset < -43200L)
-    utc_offset += 86400L;
-
-  return utc_offset;
-}
-
 void gps_handle_message();
 
 void gps_poll() {
@@ -188,7 +175,7 @@ void gps_timing_packet() {
 
   debug("\r\n");
 
-  time_set_date(gps_week, gps_tow, utc_offset);
+  time_set_date(gps_week, gps_tow, -utc_offset);
 }
 
 void gps_supplemental_timing_packet() {
