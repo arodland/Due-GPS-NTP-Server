@@ -46,7 +46,7 @@ void gps_write_tsip(const unsigned short packetid, const char *packet, int len) 
   gps_writebyte(0x03); // ETX
 }
 
-void gps_set_serial_options() {
+static void gps_set_serial_options() {
   gps_write_tsip(0xBC,
     "\x00" // Port 0
     "\x0A" // Input rate 57600
@@ -65,6 +65,45 @@ void gps_set_serial_options() {
   GPS.begin(57600, SERIAL_8N1);
   GPS.flush();
 }
+
+static void gps_set_utc_mode() {
+  gps_write_tsip(0x8EA2,
+    "\x03" // UTC time, UTC PPS
+    , 1
+  );
+}
+
+static void gps_set_primary_config() {
+  gps_write_tsip(0xBB,
+    "\x00" // Set config
+    "\x07" // Overdetermined clock
+    "\xff" // Reserved
+    "\x04" // Stationary
+    "\xff" // Reserved
+//    "\x00\x00\x00\x3e" // Elevation mask: 10 degrees
+    "\x00\x00\x80\x3d" // Elevation mask: 5 degrees
+    "\x00\x00\x80\x40" // Signal mask: 4 AMU
+//    "\x00\x00\x40\x41" // PDOP mask: 12
+    "\x00\x00\x80\x41" // PDOP mask: 16
+    "\x00\x00\xc0\x40" // 2D/3D switch: 6
+    "\xff" // Reserved
+    "\x02" // Foliage: always
+    "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff" // Reserved
+    , 40
+  );
+}
+
+static void gps_set_pps_config() {
+  gps_write_tsip(0x8e4a,
+    "\x01" // PPS on
+    "\x00" // reserved
+    "\x00" // rising PPS
+    "\xbe\x64\xb1\x3d\xa9\x46\x9e\x6a"// cable delay = 38.5425ns
+    "\x43\x96\x00\x00" // bias uncertainty threshold = 300m
+    , 15
+  );
+}
+
 
 static enum gps_state_t decoder_state = GPS_LEADER;
 static char gps_message_valid;
@@ -166,7 +205,7 @@ void gps_timing_packet() {
   };
 
   for (int i = 0 ; i < sizeof(timing_flag_msg) / sizeof(*timing_flag_msg); i++) {
-    const char *msg = timing_flag_msg[i][timing_flag & (1 << i)];
+    const char *msg = timing_flag_msg[i][(timing_flag >> i) & 1];
     if (msg) {
       debug(" ");
       debug(msg);
@@ -176,11 +215,12 @@ void gps_timing_packet() {
   debug("\r\n");
 
   time_set_date(gps_week, gps_tow, -utc_offset);
+  time_valid = (timing_flag & 8) ? 0 : 1; /* Only valid if we have UTCOFFSET */
 }
 
 void gps_supplemental_timing_packet() {
   static char *rcv_mode_msg[] = {
-    "AUTO", "1SAT", "2D", "3D", "DGPR", "CLOCK2D", "CLOCKOD"
+    "AUTO", "1SAT", "MODE2", "2D", "3D", "DGPR", "CLOCK2D", "CLOCKOD"
   };
 
   static char *alarm_msg[] = {
@@ -205,8 +245,18 @@ void gps_supplemental_timing_packet() {
   float quantization_error;
   memcpy(&quantization_error, gps_payload + 59, 4);
 
-  debug("GPS Mode: "); debug(rcv_mode_msg[rcv_mode]);
-  debug(" Status: "); debug(gps_status_msg[gps_status]);
+  debug("GPS Mode: "); 
+  if (rcv_mode < sizeof(rcv_mode_msg) / sizeof(*rcv_mode_msg)) {
+    debug(rcv_mode_msg[rcv_mode]);
+  } else {
+    debug(rcv_mode);
+  }
+  debug(" Status: "); 
+  if (gps_status < sizeof(gps_status_msg) / sizeof(*gps_status_msg)) {
+    debug(gps_status_msg[gps_status]);
+  } else {
+    debug(gps_status);
+  }
 
   if (alarm & alarm_mask) {
     debug(" Alarm:");
@@ -217,7 +267,7 @@ void gps_supplemental_timing_packet() {
       }
     }
   }
-  if (survey_pct != 100) {
+  if (alarm & 0x20) {
     debug(" Survey: ");
     debug(survey_pct);
     debug("%");
@@ -244,6 +294,9 @@ void gps_handle_message() {
 
 void gps_init() {
   GPS.begin(9600, SERIAL_8O1);;
+  delay(100);
+  gps_set_utc_mode();
+  gps_set_pps_config();
 }
 
 #endif
