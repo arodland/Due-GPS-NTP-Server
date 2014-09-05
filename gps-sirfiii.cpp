@@ -380,6 +380,7 @@ void gps_geodetic_message() {
   int utc_offset = gps_utc_offset(hour, minute, second, gps_tow_sec);
 
   time_set_date(gps_week, gps_tow_sec, utc_offset);
+  time_set_valid(1);
 }
 
 void gps_ack_message() {

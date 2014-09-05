@@ -6,6 +6,8 @@
 
 static unsigned short gps_week = 0;
 static uint32_t tow_sec_utc = 0;
+static char time_valid = 0;
+static int startup = 1;
 
 void time_set_date(unsigned short week, unsigned int gps_tow, short offset) {
   if ((int)gps_tow + offset < 0) {
@@ -68,8 +70,15 @@ void second_int() {
   }
 }
 
+void time_set_valid(char valid) {
+  time_valid = valid;
+}
+
+char time_get_valid() {
+  return time_valid && !startup;
+}
+
 void pll_run() {
-  static int startup = 1;
   static int startup_timer = 0;
   static int pll_factor = 10;
   static int32_t pll_accum = 0;

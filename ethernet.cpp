@@ -134,16 +134,21 @@ void do_ntp_request(unsigned char *buf, unsigned int len,
      */
     memcpy(reply + 16, reply + 32, 4);
 
-    time_get_ntp(*TIMER_CLOCK, &tx_ts_upper, &tx_ts_lower, NTP_FUDGE_TX);
-    /* Copy tx timestamp into packet */
-    reply[40] = (tx_ts_upper >> 24) & 0xff;
-    reply[41] = (tx_ts_upper >> 16) & 0xff;
-    reply[42] = (tx_ts_upper >> 8) & 0xff;
-    reply[43] = (tx_ts_upper) & 0xff;
-    reply[44] = (tx_ts_lower >> 24) & 0xff;
-    reply[45] = (tx_ts_lower >> 16) & 0xff;
-    reply[46] = (tx_ts_lower >> 8) & 0xff;
-    reply[47] = (tx_ts_lower) & 0xff;
+    if (time_get_valid()) {
+      time_get_ntp(*TIMER_CLOCK, &tx_ts_upper, &tx_ts_lower, NTP_FUDGE_TX);
+      /* Copy tx timestamp into packet */
+      reply[40] = (tx_ts_upper >> 24) & 0xff;
+      reply[41] = (tx_ts_upper >> 16) & 0xff;
+      reply[42] = (tx_ts_upper >> 8) & 0xff;
+      reply[43] = (tx_ts_upper) & 0xff;
+      reply[44] = (tx_ts_lower >> 24) & 0xff;
+      reply[45] = (tx_ts_lower >> 16) & 0xff;
+      reply[46] = (tx_ts_lower >> 8) & 0xff;
+      reply[47] = (tx_ts_lower) & 0xff;
+    } else {
+      reply[1] = 0; /* Stratum: undef */
+      memcpy(reply + 12, "INIT", 4); /* refid */
+    }
 
     Udp.beginPacket(ip, port);
     Udp.write(reply, 48);

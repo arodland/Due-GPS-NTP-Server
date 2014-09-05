@@ -111,6 +111,7 @@ static unsigned short gps_packetid;
 static unsigned int gps_payload_len;
 static unsigned char gps_payload[GPS_BUFFER_SIZE];
 static unsigned char *gps_payload_ptr;
+static char time_valid = 0;
 
 void gps_handle_message();
 
@@ -274,6 +275,12 @@ void gps_supplemental_timing_packet() {
   }
 
   debug("\r\n");
+
+  if (alarm & 0x34e)
+    time_valid = 0;
+  if (gps_status == 1 || gps_status == 8 || gps_status == 12 || gps_status == 16)
+    time_valid = 0;
+  time_set_valid(time_valid);
 }
 
 void gps_handle_message() {
