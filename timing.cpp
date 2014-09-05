@@ -98,6 +98,11 @@ void pll_run() {
   debug(pps_ns);
   debug("\r\n");
 
+  if (!startup && (pps_ns > 1000000 || pps_ns < -1000000)) {
+    timers_jam_sync();
+    return;
+  }
+
   int32_t fll_rate = 0;
 
   if (!startup) {

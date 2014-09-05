@@ -23,5 +23,6 @@ static inline uint32_t timer_get_capture() {
 }
 
 extern void timers_set_max(uint32_t max);
+extern void timers_jam_sync();
 
 #endif

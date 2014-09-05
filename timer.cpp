@@ -53,8 +53,13 @@ void timers_set_max(uint32_t max) {
   TC0->TC_CHANNEL[0].TC_RC = TC0->TC_CHANNEL[1].TC_RC = max;
 }
 
+static int jam_sync = 1;
+
+void timers_jam_sync() {
+  jam_sync = 1;
+}
+
 void TC1_Handler() {
-  static int first = 1;
   uint32_t status = TC0->TC_CHANNEL[1].TC_SR;
   if (status & TC_SR_CPCS) { // On RC compare (1Hz)
     second_int();
@@ -64,9 +69,9 @@ void TC1_Handler() {
     uint32_t tm = TC0->TC_CHANNEL[1].TC_RA;
     TC0->TC_CHANNEL[1].TC_RB;
     debug(tm); debug("\r\n");
-    if (first) {
+    if (jam_sync) {
       timers_sync();
-      first = 0;
+      jam_sync = 0;
     } else {
       pps_int = 1;
     }
