@@ -65,6 +65,7 @@ uint32_t health_get_ref_age() {
   age = now_upper - reftime_upper;
   if (now_lower < reftime_lower)
     age -= 1;
+  return age;
 }
 
 /* Health state machine:
