@@ -82,7 +82,7 @@ static uint16_t fll_history_len = 0;
 static uint16_t fll_idx = 0;
 static uint16_t lag = FLL_MIN_LEN;
 
-static void pll_reset_state() {
+void pll_reset_state() {
   pll_accum = 0;
   prev_pps_ns = 0;
   prev_rate = 0;
@@ -194,6 +194,7 @@ void pll_run() {
 }
 
 void pll_enter_holdover() {
+  slew_rate = 0;
   pll_set_rate(fll_rate); /* Cancel any slew in progress but keep best known FLL value */
   pll_reset_state(); /* Everything except FLL rate will be invalid when we come out of holdover */
 }

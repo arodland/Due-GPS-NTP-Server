@@ -23,7 +23,7 @@ void loop() {
     char run_pll = health_should_run_pll();
     if (run_pll) {
       if (!pll_was_running) {
-        pll_reset();
+        pll_reset_state();
       }
       pll_run();
     }
