@@ -3,10 +3,10 @@
 #include "debug.h"
 #include "timer.h"
 #include "rb.h"
+#include "health.h"
 
 static unsigned short gps_week = 0;
 static uint32_t tow_sec_utc = 0;
-static char time_valid = 0;
 static int startup = 1;
 
 void time_set_date(unsigned short week, unsigned int gps_tow, short offset) {
@@ -68,28 +68,52 @@ void second_int() {
     tow_sec_utc -= 604800UL;
     ++gps_week;
   }
+  health_watchdog_tick();
 }
 
-void time_set_valid(char valid) {
-  time_valid = valid;
+static int pll_factor = PLL_MIN_FACTOR;
+static int32_t slew_rate = 0, fll_rate = 0;
+static int32_t pll_accum = 0;
+static int32_t prev_pps_ns = 0;
+static int32_t prev_rate = 0;
+static int32_t fll_offset = 0;
+static int32_t fll_history[FLL_MAX_LEN];
+static uint16_t fll_history_len = 0;
+static uint16_t fll_idx = 0;
+static uint16_t lag = FLL_MIN_LEN;
+
+void pll_reset_state() {
+  pll_accum = 0;
+  prev_pps_ns = 0;
+  prev_rate = 0;
+  fll_offset = 0;
+  fll_history_len = 0;
+  fll_idx = 0;
+  lag = FLL_MIN_LEN;
+  pll_factor = PLL_MIN_FACTOR;
 }
 
-char time_get_valid() {
-  return time_valid && !startup;
+void pll_reset() {
+  pll_reset_state();
+  fll_rate = 0;
+}
+
+static int32_t pll_set_rate(int32_t rate) {
+  int32_t rb_rate = startup ? 0 : rate;
+  rb_rate = 2 * (rb_rate / 2); /* Rb granularity is 2ppt */
+  rb_rate = rb_set_frequency(rb_rate);
+  int32_t dds_rate = rate - rb_rate;
+  int32_t timer_offs = (dds_rate + (dds_rate > 0 ? 50000 : -50000)) / 100000;
+  dds_rate = 100000 * timer_offs; /* Timer granularity is 100ppb */
+  timers_set_max((uint32_t) 10000000 - timer_offs);
+
+  debug(slew_rate); debug(" PLL + "); debug(fll_rate); debug(" FLL = "); debug(rate);
+  debug(" [ "); debug(rb_rate); debug(" Rb + "); debug(dds_rate); debug(" digital ]\r\n");
+
+  return rb_rate + dds_rate;
 }
 
 void pll_run() {
-  static int startup_timer = 0;
-  static int pll_factor = 10;
-  static int32_t pll_accum = 0;
-  static int32_t prev_pps_ns = 0;
-  static int32_t prev_rate = 0;
-  static int32_t fll_offset = 0;
-  static int32_t fll_history[4000];
-  static uint16_t fll_history_len = 0;
-  static uint16_t fll_idx = 0;
-  static uint16_t lag = FLL_MIN_LEN;
-
   int32_t pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL) + PPS_FUDGE_NS;
   if (pps_ns > 500000000)
     pps_ns -= 1000000000;
@@ -100,10 +124,9 @@ void pll_run() {
 
   if (!startup && (pps_ns > 1000000 || pps_ns < -1000000)) {
     timers_jam_sync();
+    pll_reset();
     return;
   }
-
-  int32_t fll_rate = 0;
 
   if (!startup) {
     fll_offset += prev_rate - 1000 * (pps_ns - prev_pps_ns);
@@ -128,22 +151,12 @@ void pll_run() {
   }
 
   pll_accum -= pps_ns * 1000;
-  int32_t slew_rate = pll_accum / pll_factor;
+  slew_rate = pll_accum / pll_factor;
 
   int32_t rate = slew_rate + fll_rate;
+  int32_t applied_rate = pll_set_rate(rate);
 
-  int32_t rb_rate = startup ? 0 : rate;
-  rb_rate = 2 * (rb_rate / 2); /* Rb granularity is 2ppt */
-  rb_rate = rb_set_frequency(rb_rate);
-  int32_t dds_rate = rate - rb_rate;
-  int32_t timer_offs = (dds_rate + (dds_rate > 0 ? 50000 : -50000)) / 100000;
-  dds_rate = 100000 * timer_offs; /* Timer granularity is 100ppb */
-  timers_set_max((uint32_t) 10000000 - timer_offs);
-
-  debug(slew_rate); debug(" PLL + "); debug(fll_rate); debug(" FLL = "); debug(rate);
-  debug(" [ "); debug(rb_rate); debug(" Rb + "); debug(dds_rate); debug(" digital ]\r\n");
-
-  pll_accum -= (rb_rate + dds_rate - fll_rate) * pll_factor;
+  pll_accum -= (applied_rate - fll_rate) * pll_factor;
 
   if (startup) {
     if (slew_rate > -PLL_STARTUP_THRESHOLD && slew_rate < PLL_STARTUP_THRESHOLD) {
@@ -151,10 +164,7 @@ void pll_run() {
       pll_factor = PLL_MIN_FACTOR;
     }
   } else if (slew_rate < -PLL_STARTUP_THRESHOLD * 2 || slew_rate > PLL_STARTUP_THRESHOLD * 2) {
-    startup = 1;
-    pll_factor = PLL_STARTUP_FACTOR;
-    fll_history_len = 0;
-    lag = FLL_MIN_LEN;
+    pll_reset();
   }  else {
     if (pll_factor < PLL_MAX_FACTOR) {
     pll_factor ++;
@@ -164,10 +174,28 @@ void pll_run() {
     fll_idx = (fll_idx + 1) % FLL_MAX_LEN;
     if (fll_history_len < FLL_MAX_LEN)
       fll_history_len ++;
-    if (lag < fll_history_len && fll_idx % 4)
+    if (lag < fll_history_len && fll_idx % 2)
       lag++;
   }
   prev_pps_ns = pps_ns;
   prev_rate = rate;
+  if (startup || pps_ns > PLL_HEALTHY_THRESHOLD_NS || pps_ns < -PLL_HEALTHY_THRESHOLD_NS) {
+    health_set_pll_status(PLL_UNLOCK);
+  } else {
+    uint32_t now_upper, now_lower;
+    time_get_ntp(*TIMER_CLOCK, &now_upper, &now_lower, 0);
+    health_set_reftime(now_upper, now_lower);
+    health_set_pll_status(PLL_OK);
+  }
+  if (lag < FLL_HEALTHY_THRESHOLD_SEC || fll_history_len < FLL_HEALTHY_THRESHOLD_SEC)
+    health_set_fll_status(FLL_UNLOCK);
+  else
+    health_set_fll_status(FLL_OK);
+}
+
+void pll_enter_holdover() {
+  slew_rate = 0;
+  pll_set_rate(fll_rate); /* Cancel any slew in progress but keep best known FLL value */
+  pll_reset_state(); /* Everything except FLL rate will be invalid when we come out of holdover */
 }
 

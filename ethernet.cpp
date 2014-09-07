@@ -1,6 +1,7 @@
 #include "config.h"
 #include "debug.h"
 #include "timing.h"
+#include "health.h"
 #include <Ethernet.h>
 #include <EthernetUdp.h>
 #include <Wire.h>
@@ -115,9 +116,28 @@ void do_ntp_request(unsigned char *buf, unsigned int len,
 
   if (mode == 3) { /* Client request */
     unsigned char reply[48];
-    uint32_t tx_ts_upper, tx_ts_lower;
+    uint32_t tx_ts_upper, tx_ts_lower, reftime_upper, reftime_lower, rootdisp;
+
     memcpy(reply, ntp_packet_template, 48);
     /* XXX set Leap Indicator */
+    /* Assume a 1ppm error accumulates as long as we're in holdover.
+     * This is pessimistic if we were previously locked to Rb. */
+    rootdisp = health_get_ref_age() / 15 + 1;
+    reply[8] = (rootdisp >> 24) & 0xff;
+    reply[9] = (rootdisp >> 16) & 0xff;
+    reply[10] = (rootdisp >> 8) & 0xff;
+    reply[11] = (rootdisp) & 0xff;
+
+    health_get_reftime(&reftime_upper, &reftime_lower);
+    reply[16] = (reftime_upper >> 24) & 0xff;
+    reply[17] = (reftime_upper >> 16) & 0xff;
+    reply[18] = (reftime_upper >> 8) & 0xff;
+    reply[19] = (reftime_upper) & 0xff;
+    reply[20] = (reftime_lower >> 24) & 0xff;
+    reply[21] = (reftime_lower >> 16) & 0xff;
+    reply[22] = (reftime_lower >> 8) & 0xff;
+    reply[23] = (reftime_lower) & 0xff;
+
     /* Copy client transmit timestamp into origin timestamp */
     memcpy(reply + 24, buf + 40, 8);
     /* Copy receive timestamp into packet */
@@ -129,12 +149,16 @@ void do_ntp_request(unsigned char *buf, unsigned int len,
     reply[37] = (recv_ts_lower >> 16) & 0xff;
     reply[38] = (recv_ts_lower >> 8) & 0xff;
     reply[39] = (recv_ts_lower) & 0xff;
+
     /* Copy top half of receive timestamp into reference timestamp --
      * we update clock every second :)
      */
     memcpy(reply + 16, reply + 32, 4);
 
-    if (time_get_valid()) {
+    if (health_get_status() == HEALTH_UNLOCK) {
+      reply[1] = 0; /* Stratum: undef */
+      memcpy(reply + 12, "INIT", 4); /* refid */
+    } else {
       time_get_ntp(*TIMER_CLOCK, &tx_ts_upper, &tx_ts_lower, NTP_FUDGE_TX);
       /* Copy tx timestamp into packet */
       reply[40] = (tx_ts_upper >> 24) & 0xff;
@@ -145,9 +169,6 @@ void do_ntp_request(unsigned char *buf, unsigned int len,
       reply[45] = (tx_ts_lower >> 16) & 0xff;
       reply[46] = (tx_ts_lower >> 8) & 0xff;
       reply[47] = (tx_ts_lower) & 0xff;
-    } else {
-      reply[1] = 0; /* Stratum: undef */
-      memcpy(reply + 12, "INIT", 4); /* refid */
     }
 
     Udp.beginPacket(ip, port);

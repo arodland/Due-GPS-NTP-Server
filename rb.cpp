@@ -1,5 +1,6 @@
 #include "config.h"
 #include "debug.h"
+#include "health.h"
 
 static int32_t rb_ppt = 0;
 
@@ -8,6 +9,7 @@ void rb_init() {
   Rb.print("a0\r\n"); /* Disable analog frequency control */
   Rb.print("f0\r\n"); /* Zero frequency offset */
   rb_ppt = 0;
+  health_set_rb_status(RB_OK); // TODO: monitor the LOCK signal
 }
 
 /* Parts per trillion -- one billion of these is 1ppm. */

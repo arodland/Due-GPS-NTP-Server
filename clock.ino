@@ -5,6 +5,7 @@
 #include "ethernet.h"
 #include "console.h"
 #include "rb.h"
+#include "health.h"
 
 void setup() {
   console_init();
@@ -14,10 +15,19 @@ void setup() {
   ether_init();
 }
 
+static char pll_was_running = 0;
+
 void loop() {
   if (pps_int) {
     pps_int = 0;
-    pll_run();
+    char run_pll = health_should_run_pll();
+    if (run_pll) {
+      if (!pll_was_running) {
+        pll_reset_state();
+      }
+      pll_run();
+    }
+    pll_was_running = run_pll;
   }
   gps_poll();
   if (ether_int) {

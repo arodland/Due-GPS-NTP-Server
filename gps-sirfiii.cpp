@@ -5,6 +5,7 @@
 #include "gps.h"
 #include "timing.h"
 #include "debug.h"
+#include "health.h"
 
 #define GPS_BUFFER_SIZE 256
 
@@ -380,7 +381,7 @@ void gps_geodetic_message() {
   int utc_offset = gps_utc_offset(hour, minute, second, gps_tow_sec);
 
   time_set_date(gps_week, gps_tow_sec, utc_offset);
-  time_set_valid(1);
+  health_set_gps_status(GPS_OK);
 }
 
 void gps_ack_message() {

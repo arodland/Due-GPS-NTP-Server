@@ -28,7 +28,9 @@
 #define FLL_MIN_LEN 120
 #define FLL_MAX_LEN 3600
 
-#define PLL_STARTUP_FACTOR 20
 #define PLL_STARTUP_THRESHOLD 100000
 #define PLL_MIN_FACTOR 20
 #define PLL_MAX_FACTOR 3600
+
+#define PLL_HEALTHY_THRESHOLD_NS 1000 /* PLL is synced if within this range */
+#define FLL_HEALTHY_THRESHOLD_SEC 200 /* FLL is synced if we have this much history */

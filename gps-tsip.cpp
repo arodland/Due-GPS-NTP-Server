@@ -5,6 +5,7 @@
 #include "gps.h"
 #include "timing.h"
 #include "debug.h"
+#include "health.h"
 
 #define GPS_BUFFER_SIZE 256
 
@@ -111,7 +112,7 @@ static unsigned short gps_packetid;
 static unsigned int gps_payload_len;
 static unsigned char gps_payload[GPS_BUFFER_SIZE];
 static unsigned char *gps_payload_ptr;
-static char time_valid = 0;
+static char have_utcoffset = 0;
 
 void gps_handle_message();
 
@@ -216,7 +217,7 @@ void gps_timing_packet() {
   debug("\r\n");
 
   time_set_date(gps_week, gps_tow, -utc_offset);
-  time_valid = (timing_flag & 8) ? 0 : 1; /* Only valid if we have UTCOFFSET */
+  have_utcoffset = (timing_flag & 8) ? 0 : 1;
 }
 
 void gps_supplemental_timing_packet() {
@@ -276,11 +277,16 @@ void gps_supplemental_timing_packet() {
 
   debug("\r\n");
 
+  enum gps_status_t status = GPS_OK;
+  if (alarm & 0x820)
+    status = GPS_MINOR_ALARM;
   if (alarm & 0x34e)
-    time_valid = 0;
+    status = GPS_UNLOCK;
   if (gps_status == 1 || gps_status == 8 || gps_status == 12 || gps_status == 16)
-    time_valid = 0;
-  time_set_valid(time_valid);
+    status = GPS_UNLOCK;
+  if (!have_utcoffset)
+    status = GPS_UNLOCK;
+  health_set_gps_status(status);
 }
 
 void gps_handle_message() {
