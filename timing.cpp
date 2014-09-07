@@ -3,10 +3,10 @@
 #include "debug.h"
 #include "timer.h"
 #include "rb.h"
+#include "health.h"
 
 static unsigned short gps_week = 0;
 static uint32_t tow_sec_utc = 0;
-static char time_valid = 0;
 static int startup = 1;
 
 void time_set_date(unsigned short week, unsigned int gps_tow, short offset) {
@@ -68,28 +68,31 @@ void second_int() {
     tow_sec_utc -= 604800UL;
     ++gps_week;
   }
+  health_watchdog_tick();
 }
 
-void time_set_valid(char valid) {
-  time_valid = valid;
-}
+static int pll_factor = PLL_MIN_FACTOR;
+static int32_t pll_accum = 0;
+static int32_t prev_pps_ns = 0;
+static int32_t prev_rate = 0;
+static int32_t fll_offset = 0;
+static int32_t fll_history[FLL_MAX_LEN];
+static uint16_t fll_history_len = 0;
+static uint16_t fll_idx = 0;
+static uint16_t lag = FLL_MIN_LEN;
 
-char time_get_valid() {
-  return time_valid && !startup;
+void pll_reset() {
+  pll_accum = 0;
+  prev_pps_ns = 0;
+  prev_rate = 0;
+  fll_offset = 0;
+  fll_history_len = 0;
+  fll_idx = 0;
+  lag = FLL_MIN_LEN;
+  pll_factor = PLL_MIN_FACTOR;
 }
 
 void pll_run() {
-  static int startup_timer = 0;
-  static int pll_factor = 10;
-  static int32_t pll_accum = 0;
-  static int32_t prev_pps_ns = 0;
-  static int32_t prev_rate = 0;
-  static int32_t fll_offset = 0;
-  static int32_t fll_history[4000];
-  static uint16_t fll_history_len = 0;
-  static uint16_t fll_idx = 0;
-  static uint16_t lag = FLL_MIN_LEN;
-
   int32_t pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL) + PPS_FUDGE_NS;
   if (pps_ns > 500000000)
     pps_ns -= 1000000000;
@@ -151,10 +154,7 @@ void pll_run() {
       pll_factor = PLL_MIN_FACTOR;
     }
   } else if (slew_rate < -PLL_STARTUP_THRESHOLD * 2 || slew_rate > PLL_STARTUP_THRESHOLD * 2) {
-    startup = 1;
-    pll_factor = PLL_STARTUP_FACTOR;
-    fll_history_len = 0;
-    lag = FLL_MIN_LEN;
+    pll_reset();
   }  else {
     if (pll_factor < PLL_MAX_FACTOR) {
     pll_factor ++;
@@ -169,5 +169,12 @@ void pll_run() {
   }
   prev_pps_ns = pps_ns;
   prev_rate = rate;
+  if (startup)
+    health_set_pll_status(PLL_UNLOCK);
+  else {
+    uint32_t now_upper, now_lower;
+    time_get_ntp(*TIMER_CLOCK, &now_upper, &now_lower, 0);
+    health_set_reftime(now_upper, now_lower);
+    health_set_pll_status(PLL_OK);
+  }
 }
-

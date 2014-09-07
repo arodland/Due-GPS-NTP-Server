@@ -8,5 +8,6 @@ void time_get_ntp(uint32_t tm, uint32_t *upper, uint32_t *lower, int32_t fudge);
 void pll_run();
 extern void time_set_valid(char valid);
 extern char time_get_valid();
+extern void pll_reset();
 
 #endif

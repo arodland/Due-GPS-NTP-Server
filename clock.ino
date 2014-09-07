@@ -5,6 +5,7 @@
 #include "ethernet.h"
 #include "console.h"
 #include "rb.h"
+#include "health.h"
 
 void setup() {
   console_init();
@@ -17,7 +18,8 @@ void setup() {
 void loop() {
   if (pps_int) {
     pps_int = 0;
-    pll_run();
+    if (health_get_status() != HEALTH_HOLDOVER)
+      pll_run();
   }
   gps_poll();
   if (ether_int) {
