@@ -4,6 +4,7 @@
 #include "timing.h"
 
 static enum pll_status_t pll_status = PLL_UNLOCK;
+static enum fll_status_t fll_status = FLL_UNLOCK;
 static enum gps_status_t gps_status = GPS_UNLOCK;
 static enum rb_status_t rb_status = RB_UNLOCK;
 static enum health_status_t health_status = HEALTH_UNLOCK;
@@ -15,6 +16,11 @@ void health_update();
 
 void health_set_pll_status(enum pll_status_t status) {
   pll_status = status;
+  health_update();
+}
+
+void health_set_fll_status(enum fll_status_t status) {
+  fll_status = status;
   health_update();
 }
 
@@ -70,16 +76,15 @@ uint32_t health_get_ref_age() {
  * but if we're currently OK then a MINOR_ALARM won't make us leave.
  */
 void health_update() {
-  debug("Status: "); debug(health_status);
-  debug(" GPS: "); debug(gps_status);
-  debug(" Rb: "); debug(rb_status);
-  debug(" PLL: "); debug(pll_status);
-  debug("\r\n");
-
   if (health_status == HEALTH_OK && gps_status == GPS_UNLOCK) {
-    health_status = HEALTH_HOLDOVER;
-    pll_reset();
-    debug("Health: entering HOLDOVER due to GPS unlock\r\n");
+    if (fll_status == FLL_OK) {
+      health_status = HEALTH_HOLDOVER;
+      pll_enter_holdover();
+      debug("Health: entering HOLDOVER due to GPS unlock\r\n");
+    } else {
+      health_status = HEALTH_UNLOCK;
+      debug("Health: entering UNLOCK due to GPS + FLL unlock\r\n");
+    }
   }
 
   if (health_status != HEALTH_UNLOCK) {
@@ -89,7 +94,6 @@ void health_update() {
     }
     if (rb_status == RB_UNLOCK) {
       health_status = HEALTH_UNLOCK;
-      pll_reset();
       debug("Health: entering UNLOCK due to Rb unlock\r\n");
     }
   }
@@ -100,4 +104,14 @@ void health_update() {
       debug("Health: all systems OK, entering OK state\r\n");
     }
   }
+}
+
+char health_should_run_pll() {
+  if (health_status == HEALTH_OK)
+    return 1;
+  if (health_status == HEALTH_HOLDOVER)
+    return 0;
+  if (gps_status == GPS_UNLOCK || rb_status == RB_UNLOCK)
+    return 0;
+  return 1;
 }

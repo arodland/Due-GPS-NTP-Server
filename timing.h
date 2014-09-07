@@ -9,5 +9,6 @@ void pll_run();
 extern void time_set_valid(char valid);
 extern char time_get_valid();
 extern void pll_reset();
+extern void pll_enter_holdover();
 
 #endif

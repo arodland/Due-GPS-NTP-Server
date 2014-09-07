@@ -6,6 +6,11 @@ enum pll_status_t {
   PLL_OK
 };
 
+enum fll_status_t {
+  FLL_UNLOCK,
+  FLL_OK
+};
+
 enum gps_status_t {
   GPS_UNLOCK,
   GPS_MINOR_ALARM,
@@ -24,12 +29,14 @@ enum health_status_t {
 };
 
 void health_set_pll_status(enum pll_status_t status);
+void health_set_fll_status(enum fll_status_t status);
 void health_set_gps_status(enum gps_status_t status);
 void health_set_rb_status(enum rb_status_t status);
 
 void health_watchdog_tick();
 
 enum health_status_t health_get_status();
+char health_should_run_pll();
 
 void health_set_reftime(uint32_t upper, uint32_t lower);
 void health_get_reftime(uint32_t *upper, uint32_t *lower);
