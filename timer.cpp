@@ -4,7 +4,7 @@
 #include "timing.h"
 
 volatile char pps_int = 0;
-
+static char pps_output_enabled = 0;
 
 static void timer1_setup() {
   pmc_enable_periph_clk(ID_TC1); // TC0 Ch1
@@ -26,9 +26,7 @@ static void timer0_setup() {
     TC_CMR_TCCLKS_XC0 |          // XC0 = TCLK0 = PB26 = pin 22
     TC_CMR_WAVSEL_UP_RC |        // Count up to RC then reset to 0
     TC_CMR_WAVE |                // Generate output waveform
-    TC_CMR_EEVT_XC1 |            // Let TIOB be an output
-    TC_CMR_BCPB_SET |            // Rising on RB compare (TIOB = PB27 = LED pin 13)
-    TC_CMR_BCPC_CLEAR            // Falling on RC compare
+    TC_CMR_EEVT_XC1              // Let TIOB be an output
   );
   TC0->TC_CHANNEL[0].TC_IER = 0;  // No interrupts
   TC0->TC_CHANNEL[0].TC_IDR = ~0; // No interrupts
@@ -82,4 +80,18 @@ void timer_init() {
   timer0_setup();
   timer1_setup();
   timers_sync();
+}
+
+void pps_output_enable() {
+  if (!pps_output_enabled) {
+    TC0->TC_CHANNEL[0].TC_CMR |= (TC_CMR_BCPB_SET | TC_CMR_BCPC_CLEAR);
+    pps_output_enabled = 1;
+  }
+}
+
+void pps_output_disable() {
+  if (pps_output_enabled) {
+    TC0->TC_CHANNEL[0].TC_CMR &= ~(TC_CMR_BCPB_SET | TC_CMR_BCPC_CLEAR);
+    pps_output_enabled = 0;
+  }
 }

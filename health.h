@@ -6,10 +6,24 @@ enum pll_status_t {
   PLL_OK
 };
 
+#ifdef HEALTH_H_DEFINE_CONSTANTS
+char *pll_status_description[] = {
+  [PLL_UNLOCK] = "UNLOCK",
+  [PLL_OK]     = "OK"
+};
+#endif
+
 enum fll_status_t {
   FLL_UNLOCK,
   FLL_OK
 };
+
+#ifdef HEALTH_H_DEFINE_CONSTANTS
+char *fll_status_description[] = {
+  [FLL_UNLOCK] = "UNLOCK",
+  [FLL_OK]     = "OK"
+};
+#endif
 
 enum gps_status_t {
   GPS_UNLOCK,
@@ -17,16 +31,39 @@ enum gps_status_t {
   GPS_OK
 };
 
+#ifdef HEALTH_H_DEFINE_CONSTANTS
+char *gps_status_description[] = {
+  [GPS_UNLOCK]      = "UNLOCK",
+  [GPS_MINOR_ALARM] = "MINOR ALARM",
+  [GPS_OK]          = "OK"
+};
+#endif
+
 enum rb_status_t {
   RB_UNLOCK,
   RB_OK
 };
+
+#ifdef HEALTH_H_DEFINE_CONSTANTS
+char *rb_status_description[] = {
+  [RB_UNLOCK] = "UNLOCK",
+  [RB_OK]     = "OK"
+};
+#endif
 
 enum health_status_t {
   HEALTH_UNLOCK,
   HEALTH_HOLDOVER,
   HEALTH_OK
 };
+
+#ifdef HEALTH_H_DEFINE_CONSTANTS
+char *health_status_description[] = {
+  [HEALTH_UNLOCK]   = "UNLOCK",
+  [HEALTH_HOLDOVER] = "HOLDOVER",
+  [HEALTH_OK]       = "OK"
+};
+#endif
 
 void health_set_pll_status(enum pll_status_t status);
 void health_set_fll_status(enum fll_status_t status);

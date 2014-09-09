@@ -1,7 +1,9 @@
 #include "config.h"
 #include "debug.h"
+#define HEALTH_H_DEFINE_CONSTANTS
 #include "health.h"
 #include "timing.h"
+#include "timer.h"
 
 static enum pll_status_t pll_status = PLL_UNLOCK;
 static enum fll_status_t fll_status = FLL_UNLOCK;
@@ -14,25 +16,47 @@ static unsigned char gps_watchdog = 0;
 
 void health_update();
 
+void health_notify_change(char *system, char *msg[], int old_status, int new_status) {
+  debug("Health: ");
+  debug(system);
+  debug(" changed state from ");
+  debug(msg[old_status]);
+  debug(" to ");
+  debug(msg[new_status]);
+  debug("\r\n");
+}
+
 void health_set_pll_status(enum pll_status_t status) {
-  pll_status = status;
-  health_update();
+  if (status != pll_status) {
+    health_notify_change("PLL", pll_status_description, pll_status, status);
+    pll_status = status;
+    health_update();
+  }
 }
 
 void health_set_fll_status(enum fll_status_t status) {
-  fll_status = status;
-  health_update();
+  if (status != fll_status) {
+    health_notify_change("FLL", fll_status_description, fll_status, status);
+    fll_status = status;
+    health_update();
+  }
 }
 
 void health_set_gps_status(enum gps_status_t status) {
   gps_watchdog = 0;
-  gps_status = status;
-  health_update();
+  if (status != gps_status) {
+    health_notify_change("GPS", gps_status_description, gps_status, status);
+    gps_status = status;
+    health_update();
+  }
 }
 
 void health_set_rb_status(enum rb_status_t status) {
-  rb_status = status;
-  health_update();
+  if (status != rb_status) {
+    health_notify_change("Rb", rb_status_description, rb_status, status);
+    rb_status = status;
+    health_update();
+  }
 }
 
 void health_watchdog_tick() {
@@ -40,8 +64,7 @@ void health_watchdog_tick() {
     gps_watchdog ++;
   if (gps_watchdog == 3) {
     debug("GPS watchdog expired\r\n");
-    gps_status = GPS_UNLOCK;
-    health_update();
+    health_set_gps_status(GPS_UNLOCK);
   }
 }
 
@@ -77,33 +100,41 @@ uint32_t health_get_ref_age() {
  * but if we're currently OK then a MINOR_ALARM won't make us leave.
  */
 void health_update() {
+  health_status_t new_status = health_status;
+
   if (health_status == HEALTH_OK && gps_status == GPS_UNLOCK) {
     if (fll_status == FLL_OK) {
-      health_status = HEALTH_HOLDOVER;
-      pll_enter_holdover();
-      debug("Health: entering HOLDOVER due to GPS unlock\r\n");
+      new_status = HEALTH_HOLDOVER;
     } else {
-      health_status = HEALTH_UNLOCK;
-      debug("Health: entering UNLOCK due to GPS + FLL unlock\r\n");
+      new_status = HEALTH_UNLOCK;
     }
   }
 
   if (health_status != HEALTH_UNLOCK) {
     if (pll_status == PLL_UNLOCK) {
-      health_status = HEALTH_UNLOCK;
-      debug("Health: entering UNLOCK due to PLL unlock\r\n");
+      new_status = HEALTH_UNLOCK;
     }
     if (rb_status == RB_UNLOCK) {
-      health_status = HEALTH_UNLOCK;
-      debug("Health: entering UNLOCK due to Rb unlock\r\n");
+      new_status = HEALTH_UNLOCK;
     }
   }
 
   if (health_status != HEALTH_OK) {
     if (pll_status == PLL_OK && gps_status == GPS_OK && rb_status == RB_OK) {
-      health_status = HEALTH_OK;
-      debug("Health: all systems OK, entering OK state\r\n");
+      new_status = HEALTH_OK;
     }
+  }
+
+  if (new_status != health_status) {
+    health_notify_change("Health", health_status_description, new_status, health_status);
+    if (new_status == HEALTH_OK) {
+      pps_output_enable();
+    } else if (new_status == HEALTH_HOLDOVER) {
+      pll_enter_holdover();
+    } else {
+      pps_output_disable();
+    }
+    health_status = new_status;
   }
 }
 
