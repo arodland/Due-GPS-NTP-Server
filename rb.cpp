@@ -4,12 +4,16 @@
 
 static int32_t rb_ppt = 0;
 
+void rb_update_health();
+
 void rb_init() {
   Rb.begin(57600);
   Rb.print("a0\r\n"); /* Disable analog frequency control */
   Rb.print("f0\r\n"); /* Zero frequency offset */
   rb_ppt = 0;
-  health_set_rb_status(RB_OK); // TODO: monitor the LOCK signal
+  pinMode(53, INPUT);
+  attachInterrupt(53, rb_update_health, CHANGE);
+  rb_update_health();
 }
 
 /* Parts per trillion -- one billion of these is 1ppm. */
@@ -37,3 +41,11 @@ int32_t rb_set_frequency(int32_t ppt) {
   return rb_ppt;
 }
 
+void rb_update_health() {
+  int lock = digitalRead(53);
+  if (lock) { /* High = unlocked */
+    health_set_rb_status(RB_UNLOCK);
+  } else {
+    health_set_rb_status(RB_OK);
+  }
+}
