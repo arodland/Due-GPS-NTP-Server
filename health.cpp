@@ -126,7 +126,7 @@ void health_update() {
   }
 
   if (new_status != health_status) {
-    health_notify_change("Health", health_status_description, new_status, health_status);
+    health_notify_change("Health", health_status_description, health_status, new_status);
     if (new_status == HEALTH_OK) {
       pps_output_enable();
     } else if (new_status == HEALTH_HOLDOVER) {
