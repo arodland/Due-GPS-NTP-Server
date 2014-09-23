@@ -113,6 +113,41 @@ static int32_t pll_set_rate(int32_t rate) {
   return rb_rate + dds_rate;
 }
 
+#define LETIDX(i) idx = fll_idx - lag + (i);\
+                 if (idx < 0)\
+                  idx += FLL_MAX_LEN;\
+                else if (idx >= FLL_MAX_LEN)\
+                  idx -= FLL_MAX_LEN;
+
+/* Compute the slope of the least-squares fit line to the historical
+ * data -- i.e. the rate at which the rubidium runs fast or slow compared
+ * to the GPS, averaged over the history length. It's cruicial that the x
+ * values add up to zero, not so crucial that the y values add up to zero.
+ * Integer subtracting the initial value makes it possible to handle an
+ * integer wraparound cleanly.
+ */
+int32_t fll_slope() {
+  int16_t idx;
+  int32_t first_value;
+  LETIDX(0);
+  first_value = fll_history[idx];
+
+  float sum_xx = 0.0, sum_xy = 0.0;
+
+  for (int16_t i = 1; i < lag ; i++) {
+    LETIDX(i);
+    int32_t diff = fll_history[idx] - first_value;
+    float x = (2 * i - lag);
+    sum_xx += x * x;
+    sum_xy += x * diff;
+  }
+
+  sum_xx += lag * lag;
+  sum_xy += lag * (fll_offset - first_value);
+
+  return nearbyint(2 * sum_xy / sum_xx);
+}
+
 void pll_run() {
   int32_t pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL) + PPS_FUDGE_NS;
   if (pps_ns > 500000000)
@@ -145,7 +180,7 @@ void pll_run() {
       }
       debug(" FLLOP["); debug(fll_prev); debug("]: ");
       debug(fll_history[fll_prev]);
-      fll_rate = (fll_offset - fll_history[fll_prev]) / lag;
+      fll_rate = fll_slope();
     }
     debug("\r\n");
   }
