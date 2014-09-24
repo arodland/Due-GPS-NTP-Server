@@ -77,6 +77,7 @@ void TC1_Handler() {
 }
 
 void timer_init() {
+  pinMode(13, OUTPUT);
   timer0_setup();
   timer1_setup();
   timers_sync();
