@@ -382,6 +382,7 @@ void gps_geodetic_message() {
 
   time_set_date(gps_week, gps_tow_sec, utc_offset);
   health_set_gps_status(GPS_OK);
+  health_reset_gps_watchdog();
 }
 
 void gps_ack_message() {

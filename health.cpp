@@ -13,6 +13,7 @@ static enum health_status_t health_status = HEALTH_UNLOCK;
 static uint32_t reftime_upper, reftime_lower;
 
 static unsigned char gps_watchdog = 0;
+static uint32_t fll_watchdog = ~0UL;
 
 void health_update();
 
@@ -42,13 +43,20 @@ void health_set_fll_status(enum fll_status_t status) {
   }
 }
 
+void health_reset_fll_watchdog() {
+  fll_watchdog = 0;
+}
+
 void health_set_gps_status(enum gps_status_t status) {
-  gps_watchdog = 0;
   if (status != gps_status) {
     health_notify_change("GPS", gps_status_description, gps_status, status);
     gps_status = status;
     health_update();
   }
+}
+
+void health_reset_gps_watchdog() {
+  gps_watchdog = 0;
 }
 
 void health_set_rb_status(enum rb_status_t status) {
@@ -64,8 +72,13 @@ void health_watchdog_tick() {
     gps_watchdog ++;
   if (gps_watchdog == 3) {
     debug("GPS watchdog expired\r\n");
-    health_notify_change("GPS", gps_status_description, gps_status, GPS_UNLOCK);
-    gps_status = GPS_UNLOCK;
+    health_set_gps_status(GPS_UNLOCK);
+  }
+  if (fll_watchdog <= HOLDOVER_LIMIT_SEC)
+    fll_watchdog ++;
+  if (fll_watchdog == HOLDOVER_LIMIT_SEC) {
+    debug("Holdover expired\r\n");
+    health_set_fll_status(FLL_UNLOCK);
   }
 }
 
@@ -96,6 +109,7 @@ uint32_t health_get_ref_age() {
  * Initial state is UNLOCK.
  * If Rb, PLL, and GPS are all OK, state becomes OK.
  * If Rb and PLL are OK, but GPS is UNLOCK, enter HOLDOVER.
+ * If in HOLDOVER and FLL solution becomes too old, enter UNLOCK.
  * If Rb or PLL are UNLOCK, state is UNLOCK.
  * Can't go from UNLOCK or HOLDOVER to OK if GPS has MINOR_ALARM,
  * but if we're currently OK then a MINOR_ALARM won't make us leave.
@@ -107,6 +121,12 @@ void health_update() {
     if (fll_status == FLL_OK) {
       new_status = HEALTH_HOLDOVER;
     } else {
+      new_status = HEALTH_UNLOCK;
+    }
+  }
+
+  if (health_status == HEALTH_HOLDOVER) {
+    if (fll_status == FLL_UNLOCK) {
       new_status = HEALTH_UNLOCK;
     }
   }

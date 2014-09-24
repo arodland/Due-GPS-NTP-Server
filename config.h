@@ -33,4 +33,4 @@
 #define PLL_MAX_FACTOR 3600
 
 #define PLL_HEALTHY_THRESHOLD_NS 1000 /* PLL is synced if within this range */
-#define FLL_HEALTHY_THRESHOLD_SEC 200 /* FLL is synced if we have this much history */
+#define HOLDOVER_LIMIT_SEC 86400 /* Can holdover for this many seconds after having a valid frequency */

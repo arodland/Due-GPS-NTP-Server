@@ -287,6 +287,7 @@ void gps_supplemental_timing_packet() {
   if (!have_utcoffset)
     status = GPS_UNLOCK;
   health_set_gps_status(status);
+  health_reset_gps_watchdog();
 }
 
 void gps_handle_message() {

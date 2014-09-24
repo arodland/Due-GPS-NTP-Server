@@ -71,6 +71,8 @@ void health_set_gps_status(enum gps_status_t status);
 void health_set_rb_status(enum rb_status_t status);
 
 void health_watchdog_tick();
+void health_reset_gps_watchdog();
+void health_reset_fll_watchdog();
 
 enum health_status_t health_get_status();
 char health_should_run_pll();

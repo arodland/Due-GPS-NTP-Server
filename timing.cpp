@@ -181,6 +181,8 @@ void pll_run() {
       debug(" FLLOP["); debug(fll_prev); debug("]: ");
       debug(fll_history[fll_prev]);
       fll_rate = fll_slope();
+      health_set_fll_status(FLL_OK);
+      health_reset_fll_watchdog();
     }
     debug("\r\n");
   }
@@ -222,10 +224,6 @@ void pll_run() {
     health_set_reftime(now_upper, now_lower);
     health_set_pll_status(PLL_OK);
   }
-  if (lag < FLL_HEALTHY_THRESHOLD_SEC || fll_history_len < FLL_HEALTHY_THRESHOLD_SEC)
-    health_set_fll_status(FLL_UNLOCK);
-  else
-    health_set_fll_status(FLL_OK);
 }
 
 void pll_enter_holdover() {
