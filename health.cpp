@@ -64,7 +64,8 @@ void health_watchdog_tick() {
     gps_watchdog ++;
   if (gps_watchdog == 3) {
     debug("GPS watchdog expired\r\n");
-    health_set_gps_status(GPS_UNLOCK);
+    health_notify_change("GPS", gps_status_description, gps_status, GPS_UNLOCK);
+    gps_status = GPS_UNLOCK;
   }
 }
 
