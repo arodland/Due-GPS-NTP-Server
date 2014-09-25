@@ -332,7 +332,6 @@ void EMAC_Handler(void)
 }
 
 void ether_rx_handler(uint32_t rx_status) {
-	debug("EH\r\n");
 	recv_ts_upper = eh_ts_upper;
 	recv_ts_lower = eh_ts_lower;
 	ether_int = 1;
@@ -415,6 +414,7 @@ void ether_init() {
 }
 
 void ether_recv() {
+	debug("EH\r\n");
 	// Process packets
 	uint32_t ul_frm_size;
 	while (emac_dev_read(&gs_emac_dev, (uint8_t *) gs_uc_eth_buffer,
