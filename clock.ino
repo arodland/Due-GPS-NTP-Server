@@ -39,4 +39,17 @@ void loop() {
   if (Console.available()) {
     Rb.write(Console.read());
   } */
+  if (Console.available()) {
+    char ch = Console.read();
+    static char tildes = 0;
+    if (ch == '`')
+      tildes ++;
+    else
+      tildes = 0;
+    if (tildes == 3) {
+      const int RSTC_KEY = 0xA5;
+      RSTC->RSTC_CR = RSTC_CR_KEY(RSTC_KEY) | RSTC_CR_PROCRST | RSTC_CR_PERRST;
+      while (true);
+    }
+  }
 }
