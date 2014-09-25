@@ -188,7 +188,7 @@ void pll_run() {
   }
 
   pll_accum -= pps_ns * 1000;
-  slew_rate = pll_accum / pll_factor;
+  slew_rate = pll_accum / (pll_factor * (startup ? 1 : 4));
 
   int32_t rate = slew_rate + fll_rate;
   int32_t applied_rate = pll_set_rate(rate);
