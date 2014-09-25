@@ -153,6 +153,13 @@ typedef struct icmp_echo_header {
 	uint16_t seq;   /**< Sequence number */
 } __attribute__ ((packed)) icmp_echo_header_t, *p_icmp_echo_header_t; /* GCC */
 
+typedef struct udp_header {
+	uint16_t port_src;
+	uint16_t port_dst;
+	uint16_t length;
+	uint16_t cksum;
+} __attribute__ ((packed)) udp_header_t, *p_udp_header_t;
+
 /** Ethernet packet structure */
 typedef struct eth_packet {
 	ethernet_header_t eth_hdr;
@@ -166,5 +173,7 @@ typedef struct eth_packet {
 
 /** Ethernet IP header size */
 #define ETH_IP_HEADER_SIZE   (sizeof(ip_header_t))
+
+#define ETH_UDP_HEADER_SIZE (sizeof(udp_header_t))
 
 #endif /* MINIIP_H_INCLUDED */

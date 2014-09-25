@@ -5,10 +5,18 @@
 #include "ethernet_phy.h"
 #include "mini_ip.h"
 
+static uint8_t gs_uc_mac_address[] = { ETHERNET_MAC_ADDR };
+static uint8_t gs_uc_ip_address[] = { ETHERNET_IP_ADDR };
+static emac_device_t gs_emac_dev;
+static volatile uint8_t gs_uc_eth_buffer[EMAC_FRAME_LENTGH_MAX];
+
+#define SWAP16(n) ( (n & 0xFF) << 8 | (n & 0xFF00) >> 8 )
+
 const int32_t NTP_FUDGE_RX = (NTP_FUDGE_RX_US * 429497) / 100;
 const int32_t NTP_FUDGE_TX = (NTP_FUDGE_TX_US * 429497) / 100;
 
 volatile char ether_int = 0;
+uint32_t eh_ts_upper, eh_ts_lower;
 uint32_t recv_ts_upper, recv_ts_lower;
 
 static const char ntp_packet_template[48] = {
@@ -24,7 +32,10 @@ static const char ntp_packet_template[48] = {
 };
 
 void do_ntp_request(unsigned char *pkt, unsigned int len) {
-  unsigned char *buf = pkt + 14;
+	p_ethernet_header_t p_eth_header = (p_ethernet_header_t)pkt;
+	p_ip_header_t p_ip_header = (p_ip_header_t)(pkt + ETH_HEADER_SIZE);
+	p_udp_header_t p_udp_header = (p_udp_header_t)(pkt + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE);
+	unsigned char *buf = pkt + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE;
   unsigned char version = (buf[0] >> 3) & 7;
   unsigned char mode = buf[0] & 7;
 
@@ -39,63 +50,82 @@ void do_ntp_request(unsigned char *pkt, unsigned int len) {
   }
 
   if (mode == 3) { /* Client request */
-    unsigned char reply[48];
-    uint32_t tx_ts_upper, tx_ts_lower, reftime_upper, reftime_lower, rootdisp;
+		// Fill the destination address and source address
+		for (int i = 0; i < 6; i++) {
+			// Swap ethernet destination address and ethernet source address
+			p_eth_header->et_dest[i] = p_eth_header->et_src[i];
+			p_eth_header->et_src[i] = gs_uc_mac_address[i];
+		}
+		// Swap the source IP address and the destination IP address
+		for (int i = 0; i < 4; i++) {
+			p_ip_header->ip_dst[i] = p_ip_header->ip_src[i];
+			p_ip_header->ip_src[i] = gs_uc_ip_address[i];
+		}
+		// Swap the UDP src and dest port
+		p_udp_header->port_dst = p_udp_header->port_src;
+		p_udp_header->port_src = SWAP16(123);
+		p_udp_header->cksum = 0;
 
-    memcpy(reply, ntp_packet_template, 48);
+    uint32_t tx_ts_upper, tx_ts_lower, reftime_upper, reftime_lower, rootdisp;
+		unsigned char origin_ts[8];
+		memcpy(origin_ts, buf + 40, 8);
+
+    memcpy(buf, ntp_packet_template, 48);
     /* XXX set Leap Indicator */
     /* Assume a 1ppm error accumulates as long as we're in holdover.
      * This is pessimistic if we were previously locked to Rb. */
     rootdisp = health_get_ref_age() / 15 + 1;
-    reply[8] = (rootdisp >> 24) & 0xff;
-    reply[9] = (rootdisp >> 16) & 0xff;
-    reply[10] = (rootdisp >> 8) & 0xff;
-    reply[11] = (rootdisp) & 0xff;
+    buf[8] = (rootdisp >> 24) & 0xff;
+    buf[9] = (rootdisp >> 16) & 0xff;
+    buf[10] = (rootdisp >> 8) & 0xff;
+    buf[11] = (rootdisp) & 0xff;
 
     health_get_reftime(&reftime_upper, &reftime_lower);
-    reply[16] = (reftime_upper >> 24) & 0xff;
-    reply[17] = (reftime_upper >> 16) & 0xff;
-    reply[18] = (reftime_upper >> 8) & 0xff;
-    reply[19] = (reftime_upper) & 0xff;
-    reply[20] = (reftime_lower >> 24) & 0xff;
-    reply[21] = (reftime_lower >> 16) & 0xff;
-    reply[22] = (reftime_lower >> 8) & 0xff;
-    reply[23] = (reftime_lower) & 0xff;
+    buf[16] = (reftime_upper >> 24) & 0xff;
+    buf[17] = (reftime_upper >> 16) & 0xff;
+    buf[18] = (reftime_upper >> 8) & 0xff;
+    buf[19] = (reftime_upper) & 0xff;
+    buf[20] = (reftime_lower >> 24) & 0xff;
+    buf[21] = (reftime_lower >> 16) & 0xff;
+    buf[22] = (reftime_lower >> 8) & 0xff;
+    buf[23] = (reftime_lower) & 0xff;
 
     /* Copy client transmit timestamp into origin timestamp */
-    memcpy(reply + 24, buf + 40, 8);
+    memcpy(buf + 24, origin_ts, 8);
     /* Copy receive timestamp into packet */
-    reply[32] = (recv_ts_upper >> 24) & 0xff;
-    reply[33] = (recv_ts_upper >> 16) & 0xff;
-    reply[34] = (recv_ts_upper >> 8) & 0xff;
-    reply[35] = (recv_ts_upper) & 0xff;
-    reply[36] = (recv_ts_lower >> 24) & 0xff;
-    reply[37] = (recv_ts_lower >> 16) & 0xff;
-    reply[38] = (recv_ts_lower >> 8) & 0xff;
-    reply[39] = (recv_ts_lower) & 0xff;
-
-    /* Copy top half of receive timestamp into reference timestamp --
-     * we update clock every second :)
-     */
-    memcpy(reply + 16, reply + 32, 4);
+    buf[32] = (recv_ts_upper >> 24) & 0xff;
+    buf[33] = (recv_ts_upper >> 16) & 0xff;
+    buf[34] = (recv_ts_upper >> 8) & 0xff;
+    buf[35] = (recv_ts_upper) & 0xff;
+    buf[36] = (recv_ts_lower >> 24) & 0xff;
+    buf[37] = (recv_ts_lower >> 16) & 0xff;
+    buf[38] = (recv_ts_lower >> 8) & 0xff;
+    buf[39] = (recv_ts_lower) & 0xff;
 
     if (health_get_status() == HEALTH_UNLOCK) {
-      reply[1] = 0; /* Stratum: undef */
-      memcpy(reply + 12, "INIT", 4); /* refid */
+      buf[1] = 0; /* Stratum: undef */
+      memcpy(buf + 12, "INIT", 4); /* refid */
     } else {
       time_get_ntp(*TIMER_CLOCK, &tx_ts_upper, &tx_ts_lower, NTP_FUDGE_TX);
       /* Copy tx timestamp into packet */
-      reply[40] = (tx_ts_upper >> 24) & 0xff;
-      reply[41] = (tx_ts_upper >> 16) & 0xff;
-      reply[42] = (tx_ts_upper >> 8) & 0xff;
-      reply[43] = (tx_ts_upper) & 0xff;
-      reply[44] = (tx_ts_lower >> 24) & 0xff;
-      reply[45] = (tx_ts_lower >> 16) & 0xff;
-      reply[46] = (tx_ts_lower >> 8) & 0xff;
-      reply[47] = (tx_ts_lower) & 0xff;
+      buf[40] = (tx_ts_upper >> 24) & 0xff;
+      buf[41] = (tx_ts_upper >> 16) & 0xff;
+      buf[42] = (tx_ts_upper >> 8) & 0xff;
+      buf[43] = (tx_ts_upper) & 0xff;
+      buf[44] = (tx_ts_lower >> 24) & 0xff;
+      buf[45] = (tx_ts_lower >> 16) & 0xff;
+      buf[46] = (tx_ts_lower >> 8) & 0xff;
+      buf[47] = (tx_ts_lower) & 0xff;
     }
 
-    // Send packet
+		debug("Send NTP reply: ");
+		uint8_t ul_rc = emac_dev_write(&gs_emac_dev, pkt,
+				48 + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE, NULL);
+		if (ul_rc != EMAC_OK) {
+			debug("NTP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
+		} else {
+			debug("OK\r\n");
+		}
   } else {
     debug("NTP unknown packet type\r\n");
   }
@@ -117,14 +147,6 @@ void ethernet_pio_setup() {
   PIO_Configure(PIOB, PIO_PERIPH_A, PIO_PB9A_EMDIO,  PIO_DEFAULT);
   PIO_Configure(PIOB, PIO_PERIPH_A, PIO_PA5A_TIOA2,  PIO_DEFAULT);
 }
-
-static uint8_t gs_uc_mac_address[] = { ETHERNET_MAC_ADDR };
-static uint8_t gs_uc_ip_address[] = { ETHERNET_IP_ADDR };
-
-static emac_device_t gs_emac_dev;
-static volatile uint8_t gs_uc_eth_buffer[EMAC_FRAME_LENTGH_MAX];
-
-#define SWAP16(n) ( (n & 0xFF) << 8 | (n & 0xFF00) >> 8 )
 
 static uint16_t emac_icmp_checksum(uint16_t *p_buff, uint32_t ul_len)
 {
@@ -207,15 +229,18 @@ static void emac_process_ip_packet(uint8_t *p_uc_data, uint32_t ul_size)
 	uint32_t i;
 	uint32_t ul_icmp_len;
 	int32_t ul_rc = EMAC_OK;
-
-	ul_size = ul_size;	// stop warning
+	uint16_t dst_port;
 
 	p_ethernet_header_t p_eth = (p_ethernet_header_t) p_uc_data;
 	p_ip_header_t p_ip_header = (p_ip_header_t) (p_uc_data + ETH_HEADER_SIZE);
 
+	p_udp_header_t p_udp_header =
+			(p_udp_header_t) ((int8_t *) p_ip_header +
+			ETH_IP_HEADER_SIZE);
 	p_icmp_echo_header_t p_icmp_echo =
 			(p_icmp_echo_header_t) ((int8_t *) p_ip_header +
 			ETH_IP_HEADER_SIZE);
+
 	switch (p_ip_header->ip_p) {
 	case IP_PROT_ICMP:
 		if (p_icmp_echo->type == ICMP_ECHO_REQUEST) {
@@ -253,7 +278,17 @@ static void emac_process_ip_packet(uint8_t *p_uc_data, uint32_t ul_size)
 			}
 		}
 		break;
-
+	case IP_PROT_UDP:
+		dst_port = SWAP16(p_udp_header->port_dst);
+		if (dst_port == 123) {
+			do_ntp_request(
+					p_uc_data,
+					ul_size - (ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE)
+			);
+		} else {
+//			debug("UDP port "); debug(dst_port); debug("\r\n");
+		}
+		break;
 	default:
 		break;
 	}
@@ -283,9 +318,6 @@ static void emac_process_eth_packet(uint8_t *p_uc_data, uint32_t ul_size)
 
 		// Process the IP packet
 		emac_process_ip_packet(p_uc_data, ul_size);
-
-		// Dump the IP header
-		emac_display_ip_packet(&ip_header, ul_size);
 		break;
 
 	default:
@@ -295,9 +327,15 @@ static void emac_process_eth_packet(uint8_t *p_uc_data, uint32_t ul_size)
 
 void EMAC_Handler(void)
 {
-	debug("EH\r\n");
-        ether_int = 1;
+	time_get_ntp(*TIMER_CLOCK, &eh_ts_upper, &eh_ts_lower, NTP_FUDGE_RX);
 	emac_handler(&gs_emac_dev);
+}
+
+void ether_rx_handler(uint32_t rx_status) {
+	debug("EH\r\n");
+	recv_ts_upper = eh_ts_upper;
+	recv_ts_lower = eh_ts_lower;
+	ether_int = 1;
 }
 
 void ether_init() {
@@ -372,18 +410,21 @@ void ether_init() {
           debug("ERROR\r\n");
 	}
         debug("OK\r\n");
+
+	emac_dev_set_rx_callback(&gs_emac_dev, ether_rx_handler);
 }
 
 void ether_recv() {
 	// Process packets
 	uint32_t ul_frm_size;
-	if (EMAC_OK != emac_dev_read(&gs_emac_dev, (uint8_t *) gs_uc_eth_buffer,
-					sizeof(gs_uc_eth_buffer), &ul_frm_size)) {
-		return;
+	while (emac_dev_read(&gs_emac_dev, (uint8_t *) gs_uc_eth_buffer,
+					sizeof(gs_uc_eth_buffer), &ul_frm_size) == EMAC_OK) {
+		if (ul_frm_size > 0) {
+			// Handle input frame
+			emac_process_eth_packet((uint8_t *) gs_uc_eth_buffer, ul_frm_size);
+		} else {
+			break;
+		}
 	}
-
-	if (ul_frm_size > 0) {
-		// Handle input frame
-		emac_process_eth_packet((uint8_t *) gs_uc_eth_buffer, ul_frm_size);
-	}
+	ether_int = 0;
 }
