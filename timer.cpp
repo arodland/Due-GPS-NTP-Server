@@ -32,7 +32,7 @@ static void timer0_setup() {
   TC0->TC_CHANNEL[0].TC_IDR = ~0; // No interrupts
   TC0->TC_CHANNEL[0].TC_CCR = TC_CCR_CLKEN;                    // Enable clock
   TC0->TC_CHANNEL[0].TC_RC = 10000000;                         // Period = 1 second
-  TC0->TC_CHANNEL[0].TC_RB = 10000000 - (PPS_OFFSET_NS / 100); // Drive high at top of second
+  TC0->TC_CHANNEL[0].TC_RB = 10000000 - ((PPS_OFFSET_NS - PPSOUT_OFFSET_NS) / 100); // Drive high at top of second
   PIO_Configure(
     PIOB,
     PIO_PERIPH_B,
