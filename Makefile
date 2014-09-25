@@ -103,7 +103,7 @@ $(foreach src,$(MYSRCFILES), $(eval $(call OBJ_template,$(src),$(addsuffix .o,$(
 clean:
 	test ! -d $(TMPDIR) || rm -rf $(TMPDIR)
 
-.PHONY: upload default
+.PHONY: upload default reset
 
 $(TMPDIR):
 	mkdir -p $(TMPDIR)
@@ -164,6 +164,9 @@ upload: $(TMPDIR)/$(PROJNAME).bin
 	stty -F $(PORT) cs8 1200 hupcl
 	sleep 1
 	$(HARDWARE)/tools/bossac -U true -p $(notdir $(PORT)) -e -w $(VERIFY) -b $(TMPDIR)/$(PROJNAME).bin -R
+
+reset:
+	stty -F $(PORT) cs8 1200 hupcl
 
 #to view the serial port with screen.
 monitor:
