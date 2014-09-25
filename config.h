@@ -21,8 +21,8 @@
 #define PPS_FUDGE_NS -50
 #define PPSOUT_OFFSET_NS 10000
 
-#define NTP_FUDGE_RX_US -50
-#define NTP_FUDGE_TX_US 1100
+#define NTP_FUDGE_RX_US -200
+#define NTP_FUDGE_TX_US 850
 
 #define FLL_MIN_LEN 300
 #define FLL_MAX_LEN 3600
