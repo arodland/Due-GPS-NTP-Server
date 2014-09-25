@@ -118,13 +118,11 @@ void do_ntp_request(unsigned char *pkt, unsigned int len) {
       buf[47] = (tx_ts_lower) & 0xff;
     }
 
-		debug("Send NTP reply: ");
 		uint8_t ul_rc = emac_dev_write(&gs_emac_dev, pkt,
 				48 + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE, NULL);
 		if (ul_rc != EMAC_OK) {
 			debug("NTP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
 		} else {
-			debug("OK\r\n");
 		}
   } else {
     debug("NTP unknown packet type\r\n");
@@ -414,7 +412,6 @@ void ether_init() {
 }
 
 void ether_recv() {
-	debug("EH\r\n");
 	// Process packets
 	uint32_t ul_frm_size;
 	while (emac_dev_read(&gs_emac_dev, (uint8_t *) gs_uc_eth_buffer,
