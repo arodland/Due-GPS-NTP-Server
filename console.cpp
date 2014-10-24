@@ -98,11 +98,11 @@ static void console_handle_command() {
   } else {
     invalid:
     Console.print("Unknown command ");
-    for (int i = 0 ; i <= cmd_words ; i++) {
+    for (int i = 0 ; i < cmd_words ; i++) {
       Console.print("[");
       Console.print(cmd_word[i]);
       Console.print("]");
-      if (i < cmd_words)
+      if (i < cmd_words - 1)
         Console.print(" ");
       else 
         Console.print("\r\n");
