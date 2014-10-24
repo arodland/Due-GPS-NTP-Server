@@ -8,6 +8,7 @@
 static unsigned short gps_week = 0;
 static uint32_t tow_sec_utc = 0;
 static int startup = 1;
+static int32_t sawtooth = 0;
 
 void time_set_date(unsigned short week, unsigned int gps_tow, short offset) {
   if ((int)gps_tow + offset < 0) {
@@ -155,6 +156,11 @@ void pll_run() {
 
   debug("PPS: ");
   debug(pps_ns);
+  debug(" + ");
+  debug(sawtooth);
+  pps_ns += sawtooth;
+  debug(" = ");
+  debug(pps_ns);
   debug("\r\n");
 
   if (!startup && (pps_ns > 1000000 || pps_ns < -1000000)) {
@@ -188,7 +194,7 @@ void pll_run() {
   }
 
   pll_accum -= pps_ns * 1000;
-  slew_rate = pll_accum / (pll_factor * (startup ? 1 : 4));
+  slew_rate = pll_accum / (pll_factor * (startup ? 1 : 10));
 
   int32_t rate = slew_rate + fll_rate;
   int32_t applied_rate = pll_set_rate(rate);
@@ -230,5 +236,10 @@ void pll_enter_holdover() {
   slew_rate = 0;
   pll_set_rate(fll_rate); /* Cancel any slew in progress but keep best known FLL value */
   pll_reset_state(); /* Everything except FLL rate will be invalid when we come out of holdover */
+  pll_factor = PLL_MAX_FACTOR / 2;
+}
+
+void time_set_sawtooth(int32_t s) {
+  sawtooth = s;
 }
 
