@@ -1,5 +1,6 @@
 #include "config.h"
 #include "system.h"
+#include "timing.h"
 
 #define BUFSIZE 512
 #define WORDS 10
@@ -89,6 +90,11 @@ void console_handle_input() {
 static void console_handle_command() {
   if (commandmatch(0, "reboot")) {
     system_reboot();
+  }  else if (commandmatch(0, "pll")) {
+    get_set_int(1, "min", pll_get_min, pll_set_min)
+    else get_set_int(1, "max", pll_get_max, pll_set_max)
+    else get_set_int(1, "factor", pll_get_factor, pll_set_factor)
+    else goto invalid;
   } else {
     invalid:
     Console.print("Unknown command ");

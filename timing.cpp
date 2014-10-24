@@ -83,6 +83,9 @@ static uint16_t fll_history_len = 0;
 static uint16_t fll_idx = 0;
 static uint16_t lag = FLL_MIN_LEN;
 
+static int pll_min_factor = PLL_MIN_FACTOR;
+static int pll_max_factor = PLL_MAX_FACTOR;
+
 void pll_reset_state() {
   pll_accum = 0;
   prev_pps_ns = 0;
@@ -91,7 +94,7 @@ void pll_reset_state() {
   fll_history_len = 0;
   fll_idx = 0;
   lag = FLL_MIN_LEN;
-  pll_factor = PLL_MIN_FACTOR;
+  pll_factor = pll_min_factor;
 }
 
 void pll_reset() {
@@ -204,13 +207,13 @@ void pll_run() {
   if (startup) {
     if (slew_rate > -PLL_STARTUP_THRESHOLD && slew_rate < PLL_STARTUP_THRESHOLD) {
       startup = 0;
-      pll_factor = PLL_MIN_FACTOR;
+      pll_factor = pll_min_factor;
     }
   } else if (slew_rate < -PLL_STARTUP_THRESHOLD * 2 || slew_rate > PLL_STARTUP_THRESHOLD * 2) {
     pll_reset();
   }  else {
-    if (pll_factor < PLL_MAX_FACTOR) {
-    pll_factor ++;
+    if (pll_factor < pll_max_factor) {
+      pll_factor ++;
     }
 
     fll_history[fll_idx] = fll_offset;
@@ -236,10 +239,38 @@ void pll_enter_holdover() {
   slew_rate = 0;
   pll_set_rate(fll_rate); /* Cancel any slew in progress but keep best known FLL value */
   pll_reset_state(); /* Everything except FLL rate will be invalid when we come out of holdover */
-  pll_factor = PLL_MAX_FACTOR / 2;
+  pll_factor = pll_max_factor / 2;
 }
 
 void time_set_sawtooth(int32_t s) {
   sawtooth = s;
+}
+
+int pll_get_factor() {
+  return pll_factor;
+}
+
+void pll_set_factor(int x) {
+  pll_factor = x;
+}
+
+int pll_get_min() {
+  return pll_min_factor;
+}
+
+void pll_set_min(int x) { 
+  pll_min_factor = x; 
+  if (pll_factor < pll_min_factor)
+    pll_factor = pll_min_factor;
+}
+
+int pll_get_max() {
+  return pll_max_factor;
+}
+
+void pll_set_max(int x) {
+  pll_max_factor = x;
+  if (pll_factor > pll_max_factor)
+    pll_factor = pll_max_factor;
 }
 
