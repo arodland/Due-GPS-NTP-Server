@@ -39,23 +39,28 @@ void console_handle_input() {
     console_input = 1;
     Console.print("> ");
   }
-  Console.print(ch);
 
   if (ch == '\r') {
+    Console.print("\r\n");
+    if (cmd_word[cmd_words] && cmd_words + 1 < WORDS)
+      cmd_words++;
     console_handle_command();
     return;
   } else if (ch == '\n') {
     return;
   } else if (ch == '\b' || ch == 127) { // backspace
+    Console.print("\b \b");
     *(--bufpos) = 0;
     if (cmd_word[cmd_words] > bufpos) {
       cmd_word[cmd_words] = NULL;
       cmd_words--;
     }
   } else if (ch == 3 || ch == '\e') { // ^C or escape
+    Console.print("^C\r\n");
     console_reset_input();
     return;
   } else if (bufpos - cmd_buf < BUFSIZE) {
+    Console.print(ch);
     if (ch == ' ') {
       *(bufpos++) = 0;
       if (cmd_word[cmd_words] && cmd_words + 1 < WORDS)
@@ -68,8 +73,21 @@ void console_handle_input() {
   }
 }
 
+#define commandmatch(pos, keyword) \
+  ( cmd_words > (pos) && !strcmp(cmd_word[pos], keyword) )
+
+#define get_set_int(pos, keyword, getter, setter) \
+  if (commandmatch(pos, keyword)) {\
+    if (cmd_words == (pos + 2))\
+      setter(atoi(cmd_word[pos + 1]));\
+    else if (cmd_words == (pos + 1))\
+      Console.println(getter());\
+    else\
+      goto invalid;\
+  }
+
 static void console_handle_command() {
-  if (!strcmp(cmd_word[0], "reboot")) {
+  if (commandmatch(0, "reboot")) {
     system_reboot();
   } else {
     invalid:
