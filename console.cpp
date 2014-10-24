@@ -77,23 +77,25 @@ void console_handle_input() {
 #define commandmatch(pos, keyword) \
   ( cmd_words > (pos) && !strcmp(cmd_word[pos], keyword) )
 
-#define get_set_int(pos, keyword, getter, setter) \
-  if (commandmatch(pos, keyword)) {\
-    if (cmd_words == (pos + 2))\
-      setter(atoi(cmd_word[pos + 1]));\
-    else if (cmd_words == (pos + 1))\
-      Console.println(getter());\
-    else\
-      goto invalid;\
-  }
+#define get_set_int(pos, getter, setter) do {\
+  if (cmd_words == (pos + 1))\
+    setter(atoi(cmd_word[pos]));\
+  else if (cmd_words == (pos))\
+    Console.println(getter());\
+  else\
+    goto invalid;\
+} while (0)
 
 static void console_handle_command() {
   if (commandmatch(0, "reboot")) {
     system_reboot();
   }  else if (commandmatch(0, "pll")) {
-    get_set_int(1, "min", pll_get_min, pll_set_min)
-    else get_set_int(1, "max", pll_get_max, pll_set_max)
-    else get_set_int(1, "factor", pll_get_factor, pll_set_factor)
+    if (commandmatch(1, "min"))
+      get_set_int(2, pll_get_min, pll_set_min);
+    else if (commandmatch(1, "max"))
+      get_set_int(2, pll_get_max, pll_set_max);
+    else if (commandmatch(1, "factor"))
+      get_set_int(2, pll_get_factor, pll_set_factor);
     else goto invalid;
   } else {
     invalid:
