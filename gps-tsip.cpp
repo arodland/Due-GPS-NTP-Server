@@ -128,6 +128,10 @@ void gps_poll() {
         }
         break;
       case GPS_PACKETID:
+        if (ch == 0x10) {
+          decoder_state = GPS_PACKETID;
+          break;
+        }
         gps_packetid = ch;
         gps_payload_len = 0;
         gps_payload_ptr = gps_payload;
