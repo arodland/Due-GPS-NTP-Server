@@ -1,6 +1,7 @@
 #include "config.h"
 #include "system.h"
 #include "timing.h"
+#include "gps.h"
 
 #define BUFSIZE 512
 #define WORDS 10
@@ -86,17 +87,30 @@ void console_handle_input() {
     goto invalid;\
 } while (0)
 
+#define getset(pos, type, prefix, suffix) \
+  get_set_##type(pos, prefix##_get_##suffix, prefix##_set_##suffix)
+
 static void console_handle_command() {
   if (commandmatch(0, "reboot")) {
     system_reboot();
   }  else if (commandmatch(0, "pll")) {
     if (commandmatch(1, "min"))
-      get_set_int(2, pll_get_min, pll_set_min);
+      getset(2, int, pll, min);
     else if (commandmatch(1, "max"))
-      get_set_int(2, pll_get_max, pll_set_max);
+      getset(2, int, pll, max);
     else if (commandmatch(1, "factor"))
-      get_set_int(2, pll_get_factor, pll_set_factor);
+      getset(2, int, pll, factor);
     else goto invalid;
+  } else if (commandmatch(0, "fll")) {
+    if (commandmatch(1, "min"))
+      getset(2, int, fll, min);
+    else if (commandmatch(1, "max"))
+      getset(2, int, fll, max);
+    else if (commandmatch(1, "lag"))
+      getset(2, int, fll, lag);
+  } else if (commandmatch(0, "gps")) {
+    if (commandmatch(1, "init"))
+      gps_init();
   } else {
     invalid:
     Console.print("Unknown command ");
