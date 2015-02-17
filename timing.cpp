@@ -86,6 +86,8 @@ static uint16_t lag = FLL_MIN_LEN;
 static int pll_min_factor = PLL_MIN_FACTOR;
 static int pll_max_factor = PLL_MAX_FACTOR;
 
+static int jump_counter = 0;
+
 void pll_reset_state() {
   pll_accum = 0;
   prev_pps_ns = 0;
@@ -166,6 +168,22 @@ void pll_run() {
   debug(pps_ns);
   debug("\r\n");
 
+  if (!startup && (
+      (pps_ns - prev_pps_ns >= 1000)
+      || (prev_pps_ns - pps_ns >= 1000)
+      )) {
+    jump_counter ++;
+    if (jump_counter >= 3) {
+      timers_jam_sync();
+      pll_reset();
+      return;
+    } else {
+      pps_ns = prev_pps_ns;
+    }
+  } else {
+    jump_counter = 0;
+  }
+
   if (!startup && (pps_ns > 1000000 || pps_ns < -1000000)) {
     timers_jam_sync();
     pll_reset();
@@ -197,7 +215,7 @@ void pll_run() {
   }
 
   pll_accum -= pps_ns * 1000;
-  slew_rate = pll_accum / (pll_factor * (startup ? 1 : 10));
+  slew_rate = pll_accum / (pll_factor * (startup ? 1 : 2));
 
   int32_t rate = slew_rate + fll_rate;
   int32_t applied_rate = pll_set_rate(rate);
