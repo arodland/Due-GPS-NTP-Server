@@ -7,7 +7,6 @@
 
 static unsigned short gps_week = 0;
 static uint32_t tow_sec_utc = 0;
-static int startup = 1;
 static int32_t sawtooth = 0;
 
 void time_set_date(unsigned short week, unsigned int gps_tow, short offset) {
@@ -107,8 +106,7 @@ void pll_reset() {
 }
 
 static int32_t pll_set_rate(int32_t rate) {
-  int32_t rb_rate = startup ? 0 : rate;
-  rb_rate = 2 * (rb_rate / 2); /* Rb granularity is 2ppt */
+  int32_t rb_rate = 2 * (rate / 2); /* Rb granularity is 2ppt */
   rb_rate = rb_set_frequency(rb_rate);
   int32_t dds_rate = rate - rb_rate;
   int32_t timer_offs = (dds_rate + (dds_rate > 0 ? 50000 : -50000)) / 100000;
@@ -170,82 +168,70 @@ void pll_run() {
   debug(pps_ns);
   debug("\r\n");
 
-  if (!startup && (
-      (pps_ns - prev_pps_ns >= 1000)
-      || (prev_pps_ns - pps_ns >= 1000)
-      )) {
+  /* Ignore a jump of 1us or more by repeating the previous measurement.
+   * If it persists for 3 seconds, though, allow it through.
+   */
+  if (jump_counter < 3 && (
+    (pps_ns - prev_pps_ns >= 1000) || (prev_pps_ns - pps_ns >= 1000)
+    )) {
     jump_counter ++;
-    if (jump_counter >= 3) {
-      timers_jam_sync();
-      pll_reset();
-      return;
-    } else {
-      pps_ns = prev_pps_ns;
-    }
+    pps_ns = prev_pps_ns;
   } else {
     jump_counter = 0;
   }
 
-  if (!startup && (pps_ns > 1000000 || pps_ns < -1000000)) {
+  /* If we're more than 1ms out of whack, reset the PLL and resync
+   * instead of trying to slew back into the zone.
+   */
+  if ((pps_ns > 1000000 || pps_ns < -1000000)) {
     timers_jam_sync();
     pll_reset();
     return;
   }
 
-  if (!startup) {
-    fll_offset += prev_rate - 1000 * (pps_ns - prev_pps_ns);
-    debug("FLLO["); debug(fll_idx); debug("]: "); debug(fll_offset);
+  fll_offset += prev_rate - 1000 * (pps_ns - prev_pps_ns);
+  debug("FLLO["); debug(fll_idx); debug("]: "); debug(fll_offset);
 
-    if (fll_history_len >= lag) {
-      static int16_t fll_prev;
-      if (lag == FLL_ARRAY_SIZE) {
-        fll_prev = fll_idx;
-      } else {
-        fll_prev = fll_idx - lag;
-        if (fll_prev < 0)
-          fll_prev += FLL_ARRAY_SIZE;
-        else if (fll_prev >= FLL_ARRAY_SIZE)
-          fll_prev -= FLL_ARRAY_SIZE;
-      }
-      debug(" FLLOP["); debug(fll_prev); debug("]: ");
-      debug(fll_history[fll_prev]);
-      fll_rate = fll_slope();
-      health_set_fll_status(FLL_OK);
-      health_reset_fll_watchdog();
+  if (fll_history_len >= lag) {
+    static int16_t fll_prev;
+    if (lag == FLL_ARRAY_SIZE) {
+      fll_prev = fll_idx;
+    } else {
+      fll_prev = fll_idx - lag;
+      if (fll_prev < 0)
+        fll_prev += FLL_ARRAY_SIZE;
+      else if (fll_prev >= FLL_ARRAY_SIZE)
+        fll_prev -= FLL_ARRAY_SIZE;
     }
-    debug("\r\n");
+    debug(" FLLOP["); debug(fll_prev); debug("]: ");
+    debug(fll_history[fll_prev]);
+    fll_rate = fll_slope();
+    health_set_fll_status(FLL_OK);
+    health_reset_fll_watchdog();
   }
+  debug("\r\n");
 
   pll_accum -= pps_ns * 1000;
-  slew_rate = pll_accum / (pll_factor * (startup ? 1 : 2));
+  slew_rate = pll_accum / (pll_factor * 2);
 
   int32_t rate = slew_rate + fll_rate;
   int32_t applied_rate = pll_set_rate(rate);
 
   pll_accum -= (applied_rate - fll_rate) * pll_factor;
 
-  if (startup) {
-    if (slew_rate > -PLL_STARTUP_THRESHOLD && slew_rate < PLL_STARTUP_THRESHOLD) {
-      startup = 0;
-      pll_factor = pll_min_factor;
-    }
-  } else if (slew_rate < -PLL_STARTUP_THRESHOLD * 2 || slew_rate > PLL_STARTUP_THRESHOLD * 2) {
-    pll_reset();
-  }  else {
-    if (pll_factor < pll_max_factor) {
-      pll_factor ++;
-    }
-
-    fll_history[fll_idx] = fll_offset;
-    fll_idx = (fll_idx + 1) % FLL_ARRAY_SIZE;
-    if (fll_history_len < FLL_ARRAY_SIZE)
-      fll_history_len ++;
-    if (lag < fll_history_len && lag < fll_max_len && fll_idx % 2)
-      lag++;
+  if (pll_factor < pll_max_factor) {
+    pll_factor ++;
   }
+
+  fll_history[fll_idx] = fll_offset;
+  fll_idx = (fll_idx + 1) % FLL_ARRAY_SIZE;
+  if (fll_history_len < FLL_ARRAY_SIZE)
+    fll_history_len ++;
+  if (lag < fll_history_len && lag < fll_max_len && fll_idx % 2)
+    lag++;
   prev_pps_ns = pps_ns;
   prev_rate = rate;
-  if (startup || pps_ns > PLL_HEALTHY_THRESHOLD_NS || pps_ns < -PLL_HEALTHY_THRESHOLD_NS) {
+  if (pps_ns > PLL_HEALTHY_THRESHOLD_NS || pps_ns < -PLL_HEALTHY_THRESHOLD_NS) {
     health_set_pll_status(PLL_UNLOCK);
   } else {
     uint32_t now_upper, now_lower;
