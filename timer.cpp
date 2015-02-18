@@ -42,8 +42,23 @@ static void timer0_setup() {
 
 }
 
-static void timers_sync() {
+static void timers_start() {
   // Loading this register resets all three channels of TC0 to 0 and starts them
+  TC0->TC_BCR = TC_BCR_SYNC;
+}
+
+static void timers_sync() {
+  do { } while (! (TC0->TC_CHANNEL[1].TC_SR & TC_SR_CPCS));
+  int32_t tgt = TC0->TC_CHANNEL[1].TC_RA + PPS_OFFSET_NS / 100 - 1;
+  if (tgt < 0)
+    tgt += 10000000;
+  if (tgt > 10000000)
+    tgt -= 10000000;
+
+  int32_t diff;
+  do {
+    diff = TC0->TC_CHANNEL[1].TC_CV - tgt;
+  } while (diff < -2 || diff > 2);
   TC0->TC_BCR = TC_BCR_SYNC;
 }
 
@@ -80,7 +95,7 @@ void timer_init() {
   pinMode(13, OUTPUT);
   timer0_setup();
   timer1_setup();
-  timers_sync();
+  timers_start();
 }
 
 void pps_output_enable() {

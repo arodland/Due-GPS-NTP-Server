@@ -11,5 +11,21 @@ extern char time_get_valid();
 extern void pll_reset();
 extern void pll_reset_state();
 extern void pll_enter_holdover();
+extern void time_set_sawtooth(int32_t s);
+
+
+extern int pll_get_factor();
+extern void pll_set_factor(int);
+extern int pll_get_min();
+extern void pll_set_min(int);
+extern int pll_get_max();
+extern void pll_set_max(int);
+
+extern int fll_get_lag();
+extern void fll_set_lag(int);
+extern int fll_get_min();
+extern void fll_set_min(int);
+extern int fll_get_max();
+extern void fll_set_max(int);
 
 #endif

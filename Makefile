@@ -54,7 +54,7 @@ INCLUDES += $(patsubst %,-I%,$(MY_LIBS))
 INCLUDES += -I.
 
 #compilation flags common to both c and c++
-COMMON_FLAGS:=-g -Os -w -ffunction-sections -fdata-sections -nostdlib --param max-inline-insns-single=500 -mcpu=cortex-m3  -mthumb
+COMMON_FLAGS:=-g -Os -w -ffunction-sections -fdata-sections -nostdlib --param max-inline-insns-single=500 -mcpu=cortex-m3  -mthumb -std=gnu++11 -fno-threadsafe-statics
 
 CFLAGS:=$(COMMON_FLAGS)
 CXXFLAGS:=$(COMMON_FLAGS) -fno-rtti -fno-exceptions 

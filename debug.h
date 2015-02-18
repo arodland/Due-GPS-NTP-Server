@@ -3,11 +3,15 @@
 
 #if DEBUG
 
-#define debug(x) Console.print(x)
-#define debug_int debug
-#define debug_long debug
-#define debug_float(x) Console.print(x, 2)
-#define debug_hex(x) Console.print(x, HEX)
+#include "console.h"
+
+#define _cprint(...) do { if(!console_input) Console.print(__VA_ARGS__); } while(0)
+
+#define debug(x) _cprint(x)
+#define debug_int(x) _cprint(x)
+#define debug_long(x) _cprint(x)
+#define debug_float(x) _cprint(x, 2)
+#define debug_hex(x) _cprint(x, HEX)
 
 #else
 

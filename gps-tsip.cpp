@@ -248,7 +248,7 @@ void gps_supplemental_timing_packet() {
   unsigned short alarm = (unsigned short)gps_payload[9] << 8 
                        | (unsigned short)gps_payload[10];
   unsigned char gps_status = gps_payload[11];
-  /*
+  
   volatile float quantization_error;
   char *qeptr = (char *)(&quantization_error);
   memcpy(qeptr, gps_payload + 62, 1);
@@ -256,10 +256,7 @@ void gps_supplemental_timing_packet() {
   memcpy(qeptr + 2, gps_payload + 60, 1);
   memcpy(qeptr + 3, gps_payload + 59, 1); 
   int quantization_error_ns = nearbyint(quantization_error);
-  debug("QE: ");
-  debug(quantization_error_ns);
-  debug("\r\n");
-  */
+  time_set_sawtooth(quantization_error_ns);
   debug("GPS Mode: "); 
   if (rcv_mode < sizeof(rcv_mode_msg) / sizeof(*rcv_mode_msg)) {
     debug(rcv_mode_msg[rcv_mode]);

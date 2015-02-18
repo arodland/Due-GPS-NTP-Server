@@ -25,10 +25,11 @@
 #define NTP_FUDGE_TX_US 850
 
 #define FLL_MIN_LEN 300
-#define FLL_MAX_LEN 3600
+#define FLL_MAX_LEN 1800
+#define FLL_ARRAY_SIZE 3600
 
 #define PLL_STARTUP_THRESHOLD 80000
-#define PLL_MIN_FACTOR 20
+#define PLL_MIN_FACTOR 300
 #define PLL_MAX_FACTOR 3600
 
 #define PLL_HEALTHY_THRESHOLD_NS 1000 /* PLL is synced if within this range */
