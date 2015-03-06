@@ -163,9 +163,9 @@ void pll_run() {
   debug(pps_ns);
   debug(" + ");
   debug(sawtooth);
-  pps_ns += sawtooth;
+//  pps_ns += sawtooth;
   debug(" = ");
-  debug(pps_ns);
+  debug(pps_ns + sawtooth);
   debug("\r\n");
 
   /* Ignore a jump of 1us or more by repeating the previous measurement.
