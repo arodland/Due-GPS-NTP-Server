@@ -52,7 +52,7 @@ static void timers_sync() {
   int32_t tgt = TC0->TC_CHANNEL[1].TC_RA + PPS_OFFSET_NS / 100 - 1;
   if (tgt < 0)
     tgt += 10000000;
-  if (tgt > 10000000)
+  if (tgt >= 10000000)
     tgt -= 10000000;
 
   int32_t diff;
