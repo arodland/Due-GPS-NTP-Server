@@ -19,6 +19,8 @@ volatile char ether_int = 0;
 uint32_t eh_ts_upper, eh_ts_lower;
 uint32_t recv_ts_upper, recv_ts_lower;
 
+void (*arp_callback)(unsigned char[], unsigned char[]);
+
 static const char ntp_packet_template[48] = {
   4 /* Mode: server reply */ | 3 << 3 /* Version: NTPv3 */,
   1 /* Stratum */, 9 /* Poll: 512sec */, -23 /* Precision: 0.1 usec */,
@@ -30,6 +32,60 @@ static const char ntp_packet_template[48] = {
   0, 0, 0, 0, 0, 0, 0, 0 /* Receive Timestamp */,
   0, 0, 0, 0, 0, 0, 0, 0 /* Transmit Timestamp */
 };
+
+void ethernet_send_udp_packet(const char dst_ip[4], const char dst_mac[6], 
+		uint16_t dst_port, uint16_t src_port, const char *payload, unsigned int len) {
+	unsigned char sndbuf[ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE + 512];
+	uint32_t ip_checksum = 0;
+
+	if (len > 512) {
+		debug("Tried to send a too-long packet");
+		return;
+	}
+
+	p_ethernet_header_t p_eth_header = (p_ethernet_header_t)sndbuf;
+	p_ip_header_t p_ip_header = (p_ip_header_t)(sndbuf + ETH_HEADER_SIZE);
+	p_udp_header_t p_udp_header = (p_udp_header_t)(sndbuf + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE);
+	unsigned char *payload_out = sndbuf + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE;
+
+	memcpy(p_eth_header->et_dest, dst_mac, 6);
+	memcpy(p_eth_header->et_src, gs_uc_mac_address, 6);
+  p_eth_header->et_protlen = SWAP16(0x0800);
+
+
+	p_ip_header->ip_hl_v = 0x45;
+	p_ip_header->ip_tos = 0;
+	p_ip_header->ip_len = SWAP16(ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE + len);
+	p_ip_header->ip_id = 0;
+	p_ip_header->ip_off = 0;
+	p_ip_header->ip_ttl = 64;
+	p_ip_header->ip_p = IP_PROT_UDP;
+	p_ip_header->ip_sum = 0;
+	memcpy(p_ip_header->ip_src, gs_uc_ip_address, 4);
+	memcpy(p_ip_header->ip_dst, dst_ip, 4);
+
+	for (uint16_t *p = (uint16_t *)p_ip_header ; p < (uint16_t *)p_ip_header + 10 ; p++) {
+		ip_checksum += SWAP16(*p);
+	}
+	while (ip_checksum > 0xffff) {
+		ip_checksum = (ip_checksum & 0xffff) + (ip_checksum >> 16);
+	}
+	p_ip_header->ip_sum = ~SWAP16(ip_checksum);
+
+
+	p_udp_header->port_src = SWAP16(src_port);
+	p_udp_header->port_dst = SWAP16(dst_port);
+	p_udp_header->length = SWAP16(ETH_UDP_HEADER_SIZE + len);
+	p_udp_header->cksum = 0;
+
+	memcpy(payload_out, payload, len);
+	uint8_t ul_rc = emac_dev_write(&gs_emac_dev, sndbuf,
+			ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE + len, NULL);
+	if (ul_rc != EMAC_OK) {
+		debug("UDP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
+	}
+}
+
 
 void do_ntp_request(unsigned char *pkt, unsigned int len) {
 	p_ethernet_header_t p_eth_header = (p_ethernet_header_t)pkt;
@@ -219,6 +275,8 @@ static void emac_process_arp_packet(uint8_t *p_uc_data, uint32_t ul_size)
 		if (ul_rc != EMAC_OK) {
                         debug("ARP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
 		}
+	} else if (SWAP16(p_arp->ar_op) == ARP_REPLY && arp_callback) {
+		arp_callback(p_arp->ar_spa, p_arp->ar_sha);
 	}
 }
 
