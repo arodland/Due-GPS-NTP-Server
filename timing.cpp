@@ -62,6 +62,13 @@ void time_get_ntp(uint32_t tm, uint32_t *upper, uint32_t *lower, int32_t fudge) 
   *upper += carry;
 }
 
+int32_t time_get_unix() {
+  int32_t ret = 315964800UL; /* GPS epoch - unix epoch in sec */
+  ret += gps_week * 604800UL; /* 1 week in sec */
+  ret += tow_sec_utc;
+  return ret;
+}
+
 void second_int() {
   ++tow_sec_utc;
   if (tow_sec_utc >= 604800UL) {
