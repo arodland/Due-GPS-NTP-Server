@@ -21,7 +21,7 @@ void time_set_date(unsigned short week, unsigned int gps_tow, short offset) {
 }
 
 uint32_t make_ns(uint32_t tm, char *carry) {
-  uint32_t ns = tm * 50 + PPS_OFFSET_NS;
+  uint32_t ns = tm * 30 + (((tm >> 16) * 1288) >> 16) + PPS_OFFSET_NS;
   if (ns >= 1000000000L) {
     ns -= 1000000000L;
     if (carry)
@@ -36,12 +36,12 @@ uint32_t time_get_ns(uint32_t tm, char *carry) {
 }
 
 inline uint32_t ntp_scale(uint32_t tm) {
-  const uint32_t mult = 14073749;
+  const uint32_t mult = 0xd95962c1;
   uint32_t upper = (tm >> 16) * (mult >> 16);
   uint32_t x1 = (tm >> 16) * (mult & 0xffff);
   uint32_t x2 = (tm & 0xffff) * (mult >> 16);
-  uint32_t low = (tm & 0xffff) * (mult & 0xffff) + 32768;
-  return (upper << 16) + x1 + x2 + (low >> 16);
+  uint32_t low = (tm & 0xffff) * (mult & 0xffff);
+  return tm * 128 + upper + ((x1 + x2 + (low >> 16) + 32806) >> 16);
 }
 
 uint32_t make_ntp(uint32_t tm, int32_t fudge, char *carry) {
@@ -80,7 +80,7 @@ void second_int() {
 }
 
 static int pll_factor = PLL_MIN_FACTOR;
-static int32_t slew_rate = 0, fll_rate = 0;
+static int32_t slew_rate = 0, fll_rate = -9200;
 static int32_t pll_accum = 0;
 static int32_t prev_pps_ns = 0;
 static int32_t prev_rate = 0;
@@ -110,16 +110,16 @@ void pll_reset_state() {
 
 void pll_reset() {
   pll_reset_state();
-  fll_rate = 0;
+  fll_rate = -9200;
 }
 
 static int32_t pll_set_rate(int32_t rate) {
   int32_t rb_rate = 2 * (rate / 2); /* Rb granularity is 2ppt */
   rb_rate = rb_set_frequency(rb_rate);
   int32_t dds_rate = rate - rb_rate;
-  int32_t timer_offs = (dds_rate + (dds_rate > 0 ? 25000 : -25000)) / 50000;
-  dds_rate = 50000 * timer_offs; /* Timer granularity is 50ppb */
-  timers_set_max((uint32_t) 20000000 - timer_offs);
+  int32_t timer_offs = (dds_rate + (dds_rate > 0 ? 15000 : -15000)) / 30000;
+  dds_rate = 30000 * timer_offs; /* Timer granularity is 30ppb */
+  timers_set_max((uint32_t) 33333333 - timer_offs);
 
   debug(slew_rate); debug(" PLL + "); debug(fll_rate); debug(" FLL = "); debug(rate);
   debug(" [ "); debug(rb_rate); debug(" Rb + "); debug(dds_rate); debug(" digital ]\r\n");
