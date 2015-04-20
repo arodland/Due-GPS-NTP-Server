@@ -319,6 +319,8 @@ void gps_handle_message() {
 void gps_init() {
   GPS.begin(9600, SERIAL_8O1);;
   delay(100);
+  gps_set_serial_options();
+  delay(100);
   gps_set_utc_mode();
   gps_set_pps_config();
 }

@@ -16,7 +16,7 @@ static void timer1_setup() {
   TC0->TC_CHANNEL[1].TC_IER = TC_IER_LDRAS | TC_IER_CPCS;    // Generate interrupt on RA load and 1Hz
   TC0->TC_CHANNEL[1].TC_IDR = ~(TC_IER_LDRAS | TC_IER_CPCS);
   TC0->TC_CHANNEL[1].TC_CCR = TC_CCR_CLKEN;    // Enable clock
-  TC0->TC_CHANNEL[1].TC_RC = 10000000;         // Period = 1 second
+  TC0->TC_CHANNEL[1].TC_RC = 31250000;         // Period = 1 second
   NVIC_EnableIRQ(TC1_IRQn);                    // Enable IRQ (TC1_Handler)
 }
 
@@ -31,8 +31,8 @@ static void timer0_setup() {
   TC0->TC_CHANNEL[0].TC_IER = 0;  // No interrupts
   TC0->TC_CHANNEL[0].TC_IDR = ~0; // No interrupts
   TC0->TC_CHANNEL[0].TC_CCR = TC_CCR_CLKEN;                    // Enable clock
-  TC0->TC_CHANNEL[0].TC_RC = 10000000;                         // Period = 1 second
-  TC0->TC_CHANNEL[0].TC_RB = 10000000 - ((PPS_OFFSET_NS - PPSOUT_OFFSET_NS) / 100); // Drive high at top of second
+  TC0->TC_CHANNEL[0].TC_RC = 31250000;                         // Period = 1 second
+  TC0->TC_CHANNEL[0].TC_RB = 31250000 - ((PPS_OFFSET_NS - PPSOUT_OFFSET_NS) / 32); // Drive high at top of second
   PIO_Configure(
     PIOB,
     PIO_PERIPH_B,
@@ -49,11 +49,11 @@ static void timers_start() {
 
 static void timers_sync() {
   do { } while (! (TC0->TC_CHANNEL[1].TC_SR & TC_SR_CPCS));
-  int32_t tgt = TC0->TC_CHANNEL[1].TC_RA + PPS_OFFSET_NS / 100 - 1;
+  int32_t tgt = TC0->TC_CHANNEL[1].TC_RA + PPS_OFFSET_NS / 32 - 1;
   if (tgt < 0)
-    tgt += 10000000;
-  if (tgt >= 10000000)
-    tgt -= 10000000;
+    tgt += 31250000;
+  if (tgt >= 31250000)
+    tgt -= 31250000;
 
   int32_t diff;
   do {
