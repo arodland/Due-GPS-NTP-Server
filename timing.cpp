@@ -4,6 +4,7 @@
 #include "timer.h"
 #include "rb.h"
 #include "health.h"
+#include "monitor.h"
 
 static unsigned short gps_week = 0;
 static uint32_t tow_sec_utc = 0;
@@ -62,6 +63,13 @@ void time_get_ntp(uint32_t tm, uint32_t *upper, uint32_t *lower, int32_t fudge) 
   *upper += carry;
 }
 
+int32_t time_get_unix() {
+  int32_t ret = 315964800UL; /* GPS epoch - unix epoch in sec */
+  ret += gps_week * 604800UL; /* 1 week in sec */
+  ret += tow_sec_utc;
+  return ret;
+}
+
 void second_int() {
   ++tow_sec_utc;
   if (tow_sec_utc >= 604800UL) {
@@ -116,6 +124,9 @@ static int32_t pll_set_rate(int32_t rate) {
   debug(slew_rate); debug(" PLL + "); debug(fll_rate); debug(" FLL = "); debug(rate);
   debug(" [ "); debug(rb_rate); debug(" Rb + "); debug(dds_rate); debug(" digital ]\r\n");
 
+  monitor_send("fll", fll_rate);
+  monitor_send("freq", rate);
+
   return rb_rate + dds_rate;
 }
 
@@ -168,6 +179,7 @@ void pll_run() {
   debug(pps_ns + sawtooth);
   debug("\r\n");
 
+  monitor_send("phase", pps_ns);
   /* Ignore a jump of 1us or more by repeating the previous measurement.
    * If it persists for 3 seconds, though, allow it through.
    */

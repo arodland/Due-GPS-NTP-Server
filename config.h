@@ -34,3 +34,9 @@
 
 #define PLL_HEALTHY_THRESHOLD_NS 1000 /* PLL is synced if within this range */
 #define HOLDOVER_LIMIT_SEC 86400 /* Can holdover for this many seconds after having a valid frequency */
+
+#define MONITOR_ENABLED 1
+#define MONITOR_IP_ADDRESS 192,168,1,3
+#define MONITOR_MAC_ADDRESS 0xb4,0x75,0x0e,0x5c,0x5d,0xcc
+#define MONITOR_PORT 1234
+#define MONITOR_PREFIX "duet."
