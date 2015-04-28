@@ -183,8 +183,8 @@ void pll_run() {
   /* Ignore a jump of 1us or more by repeating the previous measurement.
    * If it persists for 3 seconds, though, allow it through.
    */
-  if (jump_counter < 3 && (
-    (pps_ns - prev_pps_ns >= 1000) || (prev_pps_ns - pps_ns >= 1000)
+  if (jump_counter < 5 && (
+    (pps_ns - prev_pps_ns >= 1000) || (prev_pps_ns - pps_ns <= -1000)
     )) {
     jump_counter ++;
     pps_ns = prev_pps_ns;
