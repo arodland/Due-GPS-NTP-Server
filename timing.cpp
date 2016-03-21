@@ -231,7 +231,7 @@ void pll_run() {
 
   pll_accum -= (applied_rate - fll_rate) * pll_factor;
 
-  if (pll_factor < pll_max_factor) {
+  if (pll_factor < pll_max_factor && fll_history_len >= lag) {
     pll_factor ++;
   }
 
