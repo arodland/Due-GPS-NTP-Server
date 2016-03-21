@@ -170,5 +170,5 @@ reset:
 
 #to view the serial port with screen.
 monitor:
-	screen -S clock $(PORT) 115200
+	screen -S duet $(PORT) 115200
 
