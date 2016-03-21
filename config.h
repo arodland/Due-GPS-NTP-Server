@@ -24,7 +24,7 @@
 #define NTP_FUDGE_RX_US -200
 #define NTP_FUDGE_TX_US 850
 
-#define FLL_MIN_LEN 30
+#define FLL_MIN_LEN 300
 #define FLL_MAX_LEN 3600
 #define FLL_ARRAY_SIZE 3600
 
