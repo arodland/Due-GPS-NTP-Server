@@ -184,7 +184,7 @@ void pll_run() {
    * If it persists for 3 seconds, though, allow it through.
    */
   if (jump_counter < 5 && (
-    (pps_ns - prev_pps_ns >= 1000) || (prev_pps_ns - pps_ns <= -1000)
+    (pps_ns - prev_pps_ns >= 1000) || (pps_ns - prev_pps_ns <= -1000)
     )) {
     jump_counter ++;
     pps_ns = prev_pps_ns;
