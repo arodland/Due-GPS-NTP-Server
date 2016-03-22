@@ -80,37 +80,31 @@ void second_int() {
 }
 
 static int pll_factor = PLL_MIN_FACTOR;
-static int32_t slew_rate = 0, fll_rate = 800;
+static int fll_factor = FLL_FACTOR;
+static int32_t slew_rate = 0, fll_rate = FLL_START_VALUE;
 static int32_t pll_accum = 0;
+static int prev_valid = 0;
 static int32_t prev_pps_ns = 0;
-static int32_t prev_rate = 0;
-static int32_t fll_offset = 0;
-static int32_t fll_history[FLL_ARRAY_SIZE];
-static uint16_t fll_history_len = 0;
-static uint16_t fll_idx = 0;
-static uint16_t lag = FLL_MIN_LEN;
+static int32_t fll_accum = 0;
+static int32_t prev_slew_rate = 0;
 
 static int pll_min_factor = PLL_MIN_FACTOR;
 static int pll_max_factor = PLL_MAX_FACTOR;
-static int fll_min_len = FLL_MIN_LEN;
-static int fll_max_len = FLL_MAX_LEN;
 
 static int jump_counter = 0;
 
 void pll_reset_state() {
   pll_accum = 0;
+  prev_valid = 0;
   prev_pps_ns = 0;
-  prev_rate = 0;
-  fll_offset = 0;
-  fll_history_len = 0;
-  fll_idx = 0;
-  lag = fll_min_len;
+  prev_slew_rate = 0;
+  fll_accum = 0;
   pll_factor = pll_min_factor;
 }
 
 void pll_reset() {
   pll_reset_state();
-  fll_rate = 800;
+  fll_rate = FLL_START_VALUE;
 }
 
 static int32_t pll_set_rate(int32_t rate) {
@@ -128,41 +122,6 @@ static int32_t pll_set_rate(int32_t rate) {
   monitor_send("freq", rate);
 
   return rb_rate + dds_rate;
-}
-
-#define LETIDX(i) idx = fll_idx - lag + (i);\
-                 if (idx < 0)\
-                  idx += FLL_ARRAY_SIZE;\
-                else if (idx >= FLL_ARRAY_SIZE)\
-                  idx -= FLL_ARRAY_SIZE;
-
-/* Compute the slope of the least-squares fit line to the historical
- * data -- i.e. the rate at which the rubidium runs fast or slow compared
- * to the GPS, averaged over the history length. It's cruicial that the x
- * values add up to zero, not so crucial that the y values add up to zero.
- * Integer subtracting the initial value makes it possible to handle an
- * integer wraparound cleanly.
- */
-int32_t fll_slope() {
-  int16_t idx;
-  int32_t first_value;
-  LETIDX(0);
-  first_value = fll_history[idx];
-
-  float sum_xx = 0.0, sum_xy = 0.0;
-
-  for (int16_t i = 1; i < lag ; i++) {
-    LETIDX(i);
-    int32_t diff = fll_history[idx] - first_value;
-    float x = (2 * i - lag);
-    sum_xx += x * x;
-    sum_xy += x * diff;
-  }
-
-  sum_xx += lag * lag;
-  sum_xy += lag * (fll_offset - first_value);
-
-  return nearbyint(2 * sum_xy / sum_xx);
 }
 
 void pll_run() {
@@ -183,7 +142,7 @@ void pll_run() {
   /* Ignore a jump of 1us or more by repeating the previous measurement.
    * If it persists for 3 seconds, though, allow it through.
    */
-  if (jump_counter < 5 && (
+  if (prev_valid && jump_counter < 5 && (
     (pps_ns - prev_pps_ns >= 1000) || (pps_ns - prev_pps_ns <= -1000)
     )) {
     jump_counter ++;
@@ -201,48 +160,43 @@ void pll_run() {
     return;
   }
 
-  fll_offset += prev_rate - 1000 * (pps_ns - prev_pps_ns);
-  debug("FLLO["); debug(fll_idx); debug("]: "); debug(fll_offset);
-
-  if (fll_history_len >= lag) {
-    static int16_t fll_prev;
-    if (lag == FLL_ARRAY_SIZE) {
-      fll_prev = fll_idx;
-    } else {
-      fll_prev = fll_idx - lag;
-      if (fll_prev < 0)
-        fll_prev += FLL_ARRAY_SIZE;
-      else if (fll_prev >= FLL_ARRAY_SIZE)
-        fll_prev -= FLL_ARRAY_SIZE;
-    }
-    debug(" FLLOP["); debug(fll_prev); debug("]: ");
-    debug(fll_history[fll_prev]);
-    fll_rate = fll_slope();
-    health_set_fll_status(FLL_OK);
-    health_reset_fll_watchdog();
-  }
-  debug("\r\n");
 
   pll_accum -= pps_ns * 1000;
   slew_rate = pll_accum / (pll_factor * 2);
+
+  if (prev_valid) {
+    fll_accum += prev_slew_rate - 1000 * (pps_ns - prev_pps_ns);
+    int32_t mod_rate = fll_accum / (fll_factor * FLL_SMOOTH);
+    debug("FLL: ");
+    debug(fll_rate);
+    fll_rate += mod_rate;
+    fll_accum -= mod_rate * fll_factor;
+    if (fll_rate > FLL_MAX) {
+      fll_rate = FLL_MAX;
+    }
+    if (fll_rate < -FLL_MAX) {
+      fll_rate = -FLL_MAX;
+    }
+    debug(" + ");
+    debug(mod_rate);
+    debug(" = ");
+    debug(fll_rate);
+    debug("\r\n");
+  }
 
   int32_t rate = slew_rate + fll_rate;
   int32_t applied_rate = pll_set_rate(rate);
 
   pll_accum -= (applied_rate - fll_rate) * pll_factor;
 
-  if (pll_factor < pll_max_factor && fll_history_len >= lag) {
+  if (pll_factor < pll_max_factor) {
     pll_factor ++;
   }
 
-  fll_history[fll_idx] = fll_offset;
-  fll_idx = (fll_idx + 1) % FLL_ARRAY_SIZE;
-  if (fll_history_len < FLL_ARRAY_SIZE)
-    fll_history_len ++;
-  if (lag < fll_history_len && lag < fll_max_len && fll_idx % 2)
-    lag++;
+  prev_slew_rate = applied_rate - fll_rate;
   prev_pps_ns = pps_ns;
-  prev_rate = rate;
+  prev_valid = 1;
+
   if (pps_ns > PLL_HEALTHY_THRESHOLD_NS || pps_ns < -PLL_HEALTHY_THRESHOLD_NS) {
     health_set_pll_status(PLL_UNLOCK);
   } else {
@@ -250,6 +204,8 @@ void pll_run() {
     time_get_ntp(*TIMER_CLOCK, &now_upper, &now_lower, 0);
     health_set_reftime(now_upper, now_lower);
     health_set_pll_status(PLL_OK);
+    health_set_fll_status(FLL_OK);
+    health_reset_fll_watchdog();
   }
 }
 
@@ -292,34 +248,11 @@ void pll_set_max(int x) {
     pll_factor = pll_max_factor;
 }
 
-int fll_get_min() {
-  return fll_min_len;
+int fll_get_factor() {
+  return fll_factor;
 }
 
-void fll_set_min(int x) {
-  fll_min_len = x;
-  if (lag < fll_min_len)
-    lag = fll_min_len;
-}
-
-int fll_get_max() {
-  return fll_max_len;
-}
-
-void fll_set_max(int x) {
-  fll_max_len = x;
-  if (fll_max_len > FLL_ARRAY_SIZE)
-    fll_max_len = FLL_ARRAY_SIZE;
-
-  if (lag > fll_max_len)
-    lag = fll_max_len;
-}
-
-int fll_get_lag() {
-  return lag;
-}
-
-void fll_set_lag(int x) {
-  lag = x;
+void fll_set_factor(int x) {
+  fll_factor = x;
 }
 

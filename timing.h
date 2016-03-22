@@ -22,11 +22,7 @@ extern void pll_set_min(int);
 extern int pll_get_max();
 extern void pll_set_max(int);
 
-extern int fll_get_lag();
-extern void fll_set_lag(int);
-extern int fll_get_min();
-extern void fll_set_min(int);
-extern int fll_get_max();
-extern void fll_set_max(int);
+extern int fll_get_factor();
+extern void fll_set_factor(int);
 
 #endif
