@@ -49,7 +49,7 @@ static void timers_start() {
 
 static void timers_sync() {
   do { } while (! (TC0->TC_CHANNEL[1].TC_SR & TC_SR_CPCS));
-  int32_t tgt = TC0->TC_CHANNEL[1].TC_RA + PPS_OFFSET_NS / 32 - 1;
+  int32_t tgt = TC0->TC_CHANNEL[1].TC_RA + PPS_OFFSET_NS / 32;
   if (tgt < 0)
     tgt += 31250000;
   if (tgt >= 31250000)
