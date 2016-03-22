@@ -24,8 +24,9 @@
 #define NTP_FUDGE_RX_US -200
 #define NTP_FUDGE_TX_US 850
 
-#define FLL_START_VALUE 800
-#define FLL_FACTOR 128
+#define FLL_START_VALUE 850
+#define FLL_MIN_FACTOR 64
+#define FLL_MAX_FACTOR 256
 #define FLL_SMOOTH 128
 #define FLL_MAX 2000
 

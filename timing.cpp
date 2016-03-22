@@ -80,7 +80,7 @@ void second_int() {
 }
 
 static int pll_factor = PLL_MIN_FACTOR;
-static int fll_factor = FLL_FACTOR;
+static int fll_factor = FLL_MIN_FACTOR;
 static int32_t slew_rate = 0, fll_rate = FLL_START_VALUE;
 static int32_t pll_accum = 0;
 static int prev_valid = 0;
@@ -90,8 +90,11 @@ static int32_t prev_slew_rate = 0;
 
 static int pll_min_factor = PLL_MIN_FACTOR;
 static int pll_max_factor = PLL_MAX_FACTOR;
+static int fll_min_factor = FLL_MIN_FACTOR;
+static int fll_max_factor = FLL_MAX_FACTOR;
 
 static int jump_counter = 0;
+static int uptime = 0;
 
 void pll_reset_state() {
   pll_accum = 0;
@@ -100,6 +103,7 @@ void pll_reset_state() {
   prev_slew_rate = 0;
   fll_accum = 0;
   pll_factor = pll_min_factor;
+  fll_factor = fll_min_factor;
 }
 
 void pll_reset() {
@@ -189,8 +193,15 @@ void pll_run() {
 
   pll_accum -= (applied_rate - fll_rate) * pll_factor;
 
-  if (pll_factor < pll_max_factor) {
-    pll_factor ++;
+  if (uptime < 300) {
+    uptime ++;
+  } else {
+    if (pll_factor < pll_max_factor) {
+      pll_factor ++;
+    }
+    if (fll_factor < fll_max_factor) {
+      fll_factor ++;
+    }
   }
 
   prev_slew_rate = applied_rate - fll_rate;
@@ -232,8 +243,8 @@ int pll_get_min() {
   return pll_min_factor;
 }
 
-void pll_set_min(int x) { 
-  pll_min_factor = x; 
+void pll_set_min(int x) {
+  pll_min_factor = x;
   if (pll_factor < pll_min_factor)
     pll_factor = pll_min_factor;
 }
@@ -254,5 +265,25 @@ int fll_get_factor() {
 
 void fll_set_factor(int x) {
   fll_factor = x;
+}
+
+int fll_get_min() {
+  return fll_min_factor;
+}
+
+void fll_set_min(int x) {
+  fll_min_factor = x;
+  if (fll_factor < fll_min_factor)
+    fll_factor = fll_min_factor;
+}
+
+int fll_get_max() {
+  return fll_max_factor;
+}
+
+void fll_set_max(int x) {
+  fll_max_factor = x;
+  if (fll_factor > fll_max_factor)
+    fll_factor = fll_max_factor;
 }
 

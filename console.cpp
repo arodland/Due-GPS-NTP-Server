@@ -102,7 +102,11 @@ static void console_handle_command() {
       getset(2, int, pll, factor);
     else goto invalid;
   } else if (commandmatch(0, "fll")) {
-    if (commandmatch(1, "factor"))
+    if (commandmatch(1, "min"))
+      getset(2, int, fll, min);
+    else if (commandmatch(1, "max"))
+      getset(2, int, fll, max);
+    else if (commandmatch(1, "factor"))
       getset(2, int, fll, factor);
   } else if (commandmatch(0, "gps")) {
     if (commandmatch(1, "init"))
