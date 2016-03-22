@@ -167,7 +167,7 @@ void pll_run() {
 
 
   pll_accum -= pps_ns * 1000;
-  slew_rate = pll_accum / (pll_factor * 2);
+  slew_rate = pll_accum / (pll_factor * PLL_SMOOTH);
 
   if (prev_valid) {
     fll_accum += prev_slew_rate - 1000 * (pps_ns - prev_pps_ns);
