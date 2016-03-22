@@ -95,6 +95,7 @@ static int fll_max_factor = FLL_MAX_FACTOR;
 
 static int jump_counter = 0;
 static int uptime = 0;
+static unsigned char cycle = 0;
 
 void pll_reset_state() {
   pll_accum = 0;
@@ -196,10 +197,12 @@ void pll_run() {
   if (uptime < 300) {
     uptime ++;
   } else {
-    if (pll_factor < pll_max_factor) {
+    cycle ++;
+
+    if (cycle % 2 == 0 && pll_factor < pll_max_factor) {
       pll_factor ++;
     }
-    if (fll_factor < fll_max_factor) {
+    if (cycle % 8 == 0 && fll_factor < fll_max_factor) {
       fll_factor ++;
     }
   }
