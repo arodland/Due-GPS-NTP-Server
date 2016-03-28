@@ -171,7 +171,14 @@ void pll_run() {
 
   if (prev_valid) {
     fll_accum += prev_slew_rate - 1000 * (pps_ns - prev_pps_ns);
-    int32_t mod_rate = fll_accum / (fll_factor * FLL_SMOOTH);
+    int32_t mod_rate = 2 * fll_accum / (fll_factor * FLL_SMOOTH);
+    if (mod_rate > 0) {
+      mod_rate++;
+    } else {
+      mod_rate--;
+    }
+    mod_rate /= 2;
+
     debug("FLL: ");
     debug(fll_rate);
     fll_rate += mod_rate;

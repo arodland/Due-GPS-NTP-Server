@@ -26,7 +26,7 @@
 
 #define FLL_START_VALUE 850
 #define FLL_MIN_FACTOR 64
-#define FLL_MAX_FACTOR 512
+#define FLL_MAX_FACTOR 1024
 #define FLL_SMOOTH 32
 #define FLL_MAX 2000
 
