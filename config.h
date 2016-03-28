@@ -24,13 +24,16 @@
 #define NTP_FUDGE_RX_US -200
 #define NTP_FUDGE_TX_US 850
 
-#define FLL_MIN_LEN 300
-#define FLL_MAX_LEN 3600
-#define FLL_ARRAY_SIZE 3600
+#define FLL_START_VALUE 850
+#define FLL_MIN_FACTOR 64
+#define FLL_MAX_FACTOR 1024
+#define FLL_SMOOTH 32
+#define FLL_MAX 2000
 
 #define PLL_STARTUP_THRESHOLD 80000
 #define PLL_MIN_FACTOR 300
 #define PLL_MAX_FACTOR 3600
+#define PLL_SMOOTH 4
 
 #define PLL_HEALTHY_THRESHOLD_NS 1000 /* PLL is synced if within this range */
 #define HOLDOVER_LIMIT_SEC 86400 /* Can holdover for this many seconds after having a valid frequency */
