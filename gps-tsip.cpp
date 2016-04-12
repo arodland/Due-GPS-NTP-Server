@@ -128,6 +128,7 @@ void gps_poll() {
         }
         break;
       case GPS_PACKETID:
+handle_packetid:
         if (ch == 0x10) {
           decoder_state = GPS_PACKETID;
           break;
@@ -171,6 +172,7 @@ handle_data:
           decoder_state = GPS_LEADER;
         } else {
           debug("Unknown sequence DLE + "); debug_int(ch); debug(" from GPS\r\n");
+          goto handle_packetid;
           decoder_state = GPS_LEADER;
         }
     }
