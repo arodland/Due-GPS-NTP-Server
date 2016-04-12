@@ -129,6 +129,11 @@ void gps_poll() {
         break;
       case GPS_PACKETID:
 handle_packetid:
+        if (ch == 0x03) { // DLE ETX: this was actually an end-of-packet. Wait for the next.
+          decoder_state = GPS_LEADER;
+          break;
+        }
+
         if (ch == 0x10) {
           decoder_state = GPS_PACKETID;
           break;
