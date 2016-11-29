@@ -3,15 +3,16 @@
 #include "timing.h"
 #include "gps.h"
 
-#define BUFSIZE 512
 #define WORDS 10
 
 char console_input = 0;
 
-static char cmd_buf[BUFSIZE + 1];
+static char cmd_buf[CONSOLE_CMDLINE_SIZE];
 static char *cmd_word[WORDS];
 static char *bufpos;
 static int cmd_words = 0;
+
+char console_outbuf[CONSOLE_OUTBUF_SIZE];
 
 static void console_reset_input();
 void console_handle_input();
@@ -30,6 +31,13 @@ static void console_reset_input() {
   bufpos = cmd_buf;
   memset(cmd_word, 0, sizeof(cmd_word));
   cmd_words = 0;
+}
+
+void console_write_buffered() {
+  if (console_outbuf[0] != '\0') {
+    Console.print(console_outbuf);
+    console_outbuf[0] = '\0';
+  }
 }
 
 void console_handle_input() {
@@ -61,7 +69,7 @@ void console_handle_input() {
     Console.print("^C\r\n");
     console_reset_input();
     return;
-  } else if (bufpos - cmd_buf < BUFSIZE) {
+  } else if (bufpos - cmd_buf < CONSOLE_CMDLINE_SIZE - 1) {
     Console.print(ch);
     if (ch == ' ') {
       *(bufpos++) = 0;

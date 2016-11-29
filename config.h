@@ -24,16 +24,17 @@
 #define NTP_FUDGE_RX_US -200
 #define NTP_FUDGE_TX_US 850
 
-#define FLL_START_VALUE 900
-#define FLL_MIN_FACTOR 256
-#define FLL_MAX_FACTOR 1024
-#define FLL_SMOOTH 32
+#define FLL_START_VALUE 910
+#define FLL_MIN_FACTOR 900
+#define FLL_MAX_FACTOR 3600
+#define FLL_SMOOTH 16
 #define FLL_MAX 2000
 
 #define PLL_STARTUP_THRESHOLD 80000
-#define PLL_MIN_FACTOR 300
-#define PLL_MAX_FACTOR 3600
+#define PLL_MIN_FACTOR 600
+#define PLL_MAX_FACTOR 7200
 #define PLL_SMOOTH 4
+#define DITHER 16
 
 #define PLL_HEALTHY_THRESHOLD_NS 1000 /* PLL is synced if within this range */
 #define HOLDOVER_LIMIT_SEC 86400 /* Can holdover for this many seconds after having a valid frequency */
@@ -43,3 +44,7 @@
 #define MONITOR_MAC_ADDRESS 0xb4,0x75,0x0e,0x5c,0x5d,0xcc
 #define MONITOR_PORT 1234
 #define MONITOR_PREFIX "duet."
+
+#define CONSOLE_OUTBUF_SIZE 512
+#define CONSOLE_CMDLINE_SIZE 512
+

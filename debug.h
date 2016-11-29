@@ -5,7 +5,7 @@
 
 #include "console.h"
 
-#define _cprint(...) do { if(!console_input) Console.print(__VA_ARGS__); } while(0)
+#define _cprint(...) do { if(!console_input) console_print(__VA_ARGS__); } while(0)
 
 #define debug(x) _cprint(x)
 #define debug_int(x) _cprint(x)

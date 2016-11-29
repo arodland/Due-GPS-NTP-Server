@@ -85,6 +85,7 @@ static int32_t slew_rate = 0, fll_rate = FLL_START_VALUE;
 static int32_t pll_accum = 0;
 static int prev_valid = 0;
 static int32_t prev_pps_ns = 0;
+static int32_t prev_pps_filtered = 0;
 static int32_t fll_accum = 0;
 static int32_t prev_slew_rate = 0;
 
@@ -134,16 +135,29 @@ void pll_run() {
   if (pps_ns > 500000000)
     pps_ns -= 1000000000;
 
+  int32_t dither = 0;
+
   debug("PPS: ");
   debug(pps_ns);
+//  debug(" + ");
+//  debug(sawtooth);
+
+#if DITHER > 0
+  dither = random(2*DITHER + 1) - DITHER;
   debug(" + ");
-  debug(sawtooth);
+  debug(dither);
+#endif
+
 //  pps_ns += sawtooth;
   debug(" = ");
-  debug(pps_ns + sawtooth);
+  debug(pps_ns + dither);
   debug("\r\n");
 
   monitor_send("phase", pps_ns);
+#if DITHER > 0
+  pps_ns += dither;
+  monitor_send("phase_dithered", pps_ns);
+#endif
   /* Ignore a jump of 1us or more by repeating the previous measurement.
    * If it persists for 3 seconds, though, allow it through.
    */
@@ -156,10 +170,13 @@ void pll_run() {
     jump_counter = 0;
   }
 
-  /* If we're more than 1ms out of whack, reset the PLL and resync
-   * instead of trying to slew back into the zone.
+  /* If we're more than 100us out of whack, or we take a phase hit (after the
+   * jump filter) of more than 10us, reset the PLL and resync instead of 
+   * trying to slew back into the zone.
    */
-  if ((pps_ns > 1000000 || pps_ns < -1000000)) {
+  if (pps_ns > 100000 || pps_ns < -100000 || 
+      prev_valid && ((pps_ns - prev_pps_ns) >= 10000 || (pps_ns - prev_pps_ns) <= -10000)
+    ) {
     timers_jam_sync();
     pll_reset();
     return;
@@ -170,30 +187,33 @@ void pll_run() {
   slew_rate = pll_accum / (pll_factor * PLL_SMOOTH);
 
   if (prev_valid) {
-    fll_accum += prev_slew_rate - 1000 * (pps_ns - prev_pps_ns);
-    int32_t mod_rate = 2 * fll_accum / (fll_factor * FLL_SMOOTH);
-    if (mod_rate > 0) {
-      mod_rate++;
-    } else {
-      mod_rate--;
-    }
-    mod_rate /= 2;
+    fll_accum += prev_slew_rate - 1000 * ((pps_ns - dither) - prev_pps_ns);
+    monitor_send("fll_accum", fll_accum);
+    if (uptime >= 180) {
+      int32_t mod_rate = 2 * fll_accum / (fll_factor * FLL_SMOOTH);
+      if (mod_rate > 0) {
+        mod_rate++;
+      } else {
+        mod_rate--;
+      }
+      mod_rate /= 2;
 
-    debug("FLL: ");
-    debug(fll_rate);
-    fll_rate += mod_rate;
-    fll_accum -= mod_rate * fll_factor;
-    if (fll_rate > FLL_MAX) {
-      fll_rate = FLL_MAX;
+      debug("FLL: ");
+      debug(fll_rate);
+      fll_rate += mod_rate;
+      fll_accum -= mod_rate * fll_factor;
+      if (fll_rate > FLL_MAX) {
+        fll_rate = FLL_MAX;
+      }
+      if (fll_rate < -FLL_MAX) {
+        fll_rate = -FLL_MAX;
+      }
+      debug(" + ");
+      debug(mod_rate);
+      debug(" = ");
+      debug(fll_rate);
+      debug("\r\n");
     }
-    if (fll_rate < -FLL_MAX) {
-      fll_rate = -FLL_MAX;
-    }
-    debug(" + ");
-    debug(mod_rate);
-    debug(" = ");
-    debug(fll_rate);
-    debug("\r\n");
   }
 
   int32_t rate = slew_rate + fll_rate;
@@ -215,7 +235,7 @@ void pll_run() {
   }
 
   prev_slew_rate = applied_rate - fll_rate;
-  prev_pps_ns = pps_ns;
+  prev_pps_ns = pps_ns - dither;
   prev_valid = 1;
 
   if (pps_ns > PLL_HEALTHY_THRESHOLD_NS || pps_ns < -PLL_HEALTHY_THRESHOLD_NS) {

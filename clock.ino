@@ -29,6 +29,7 @@ void loop() {
     }
     pll_was_running = run_pll;
   }
+  console_write_buffered();
   gps_poll();
   if (ether_int) {
     ether_recv();
