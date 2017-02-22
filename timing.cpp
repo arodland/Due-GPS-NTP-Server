@@ -177,6 +177,7 @@ void pll_run() {
   if (pps_ns > 100000 || pps_ns < -100000 || 
       prev_valid && ((pps_ns - prev_pps_ns) >= 10000 || (pps_ns - prev_pps_ns) <= -10000)
     ) {
+    monitor_flush();
     timers_jam_sync();
     pll_reset();
     return;
@@ -248,6 +249,8 @@ void pll_run() {
     health_set_fll_status(FLL_OK);
     health_reset_fll_watchdog();
   }
+
+  monitor_flush();
 }
 
 void pll_enter_holdover() {
