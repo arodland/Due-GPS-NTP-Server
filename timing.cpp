@@ -5,6 +5,7 @@
 #include "rb.h"
 #include "health.h"
 #include "monitor.h"
+#include "ethernet.h"
 
 static unsigned short gps_week = 0;
 static uint32_t tow_sec_utc = 0;
@@ -300,7 +301,7 @@ void pll_run() {
     health_set_fll_status(FLL_OK);
     health_reset_fll_watchdog();
   }
-
+  ethernet_send_ntp_stats();
   monitor_flush();
 }
 

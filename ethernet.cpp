@@ -2,6 +2,7 @@
 #include "debug.h"
 #include "timing.h"
 #include "health.h"
+#include "monitor.h"
 #include "ethernet_phy.h"
 #include "mini_ip.h"
 
@@ -18,6 +19,8 @@ const int32_t NTP_FUDGE_TX = (NTP_FUDGE_TX_US * 429497) / 100;
 volatile char ether_int = 0;
 uint32_t eh_ts_upper, eh_ts_lower;
 uint32_t recv_ts_upper, recv_ts_lower;
+
+int ntp_invalid = 0, ntp_wrongversion = 0, ntp_wrongmode = 0, ntp_error = 0, ntp_ok = 0;
 
 void (*arp_callback)(unsigned char[], unsigned char[]);
 
@@ -97,11 +100,15 @@ void do_ntp_request(unsigned char *pkt, unsigned int len) {
 
   if (len < 48) {
     debug("Not NTP\r\n");
+    ntp_invalid++;
     return;
   }
 
   if (version != 3 && version != 4) {
-    debug("NTP unknown version\r\n");
+    debug("NTP unknown version ");
+    debug(version);
+    debug("\r\n");
+    ntp_wrongversion++;
     return;
   }
 
@@ -178,13 +185,28 @@ void do_ntp_request(unsigned char *pkt, unsigned int len) {
 				48 + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE, NULL);
 		if (ul_rc != EMAC_OK) {
 			debug("NTP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
+      ntp_error++;
 		} else {
+      ntp_ok++;
 		}
   } else {
-    debug("NTP unknown packet type\r\n");
+    ntp_wrongmode++;
   }
 }
 
+void ethernet_send_ntp_stats() {
+  monitor_send("ntp.invalid", ntp_invalid);
+  monitor_send("ntp.wrongversion", ntp_wrongversion);
+  monitor_send("ntp.wrongmode", ntp_wrongmode);
+  monitor_send("ntp.error", ntp_error);
+  monitor_send("ntp.ok", ntp_ok);
+
+  ntp_invalid = 0;
+  ntp_wrongversion = 0;
+  ntp_wrongmode = 0;
+  ntp_error = 0;
+  ntp_ok = 0;
+}
 
 unsigned char packet_buffer[256];
 
