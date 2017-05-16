@@ -6,6 +6,7 @@
 #include "console.h"
 #include "rb.h"
 #include "health.h"
+#include "monitor.h"
 
 void setup() {
   console_init();
