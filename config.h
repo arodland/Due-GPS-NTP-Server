@@ -18,23 +18,28 @@
 
 #define PPS_OFFSET_NS 1275616
 #define PPS_OFFSET_NTP 5478729
-#define PPS_FUDGE_NS -16
-#define PPSOUT_OFFSET_NS 10000
 
-#define NTP_FUDGE_RX_US -200
-#define NTP_FUDGE_TX_US 850
+#define PPS_FUDGE_NS 50
 
-#define FLL_START_VALUE 910
-#define FLL_MIN_FACTOR 900
+#define PPSOUT_OFFSET_NS 128
+
+#define NTP_FUDGE_US 110
+#define NTP_FUDGE_NTP 472446
+
+#define NTP_FUDGE_RX_US -10
+#define NTP_FUDGE_TX_US 20
+
+#define FLL_START_VALUE 900
+#define FLL_MIN_FACTOR 1800
 #define FLL_MAX_FACTOR 3600
-#define FLL_SMOOTH 16
+#define FLL_SMOOTH 1
 #define FLL_MAX 2000
 
 #define PLL_STARTUP_THRESHOLD 80000
 #define PLL_MIN_FACTOR 600
-#define PLL_MAX_FACTOR 7200
-#define PLL_SMOOTH 4
-#define DITHER 16
+#define PLL_MAX_FACTOR 5400
+
+#define PPS_FILTER_DEPTH 30
 
 #define PLL_HEALTHY_THRESHOLD_NS 1000 /* PLL is synced if within this range */
 #define HOLDOVER_LIMIT_SEC 86400 /* Can holdover for this many seconds after having a valid frequency */

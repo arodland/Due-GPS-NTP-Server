@@ -28,5 +28,6 @@ extern int fll_get_min();
 extern void fll_set_min(int);
 extern int fll_get_max();
 extern void fll_set_max(int);
-
+extern int fll_get_coeff();
+extern void fll_set_coeff(int);
 #endif

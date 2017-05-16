@@ -116,6 +116,8 @@ static void console_handle_command() {
       getset(2, int, fll, max);
     else if (commandmatch(1, "factor"))
       getset(2, int, fll, factor);
+    else if (commandmatch(1, "coeff"))
+      getset(2, int, fll, coeff);
   } else if (commandmatch(0, "gps")) {
     if (commandmatch(1, "init"))
       gps_init();
