@@ -28,6 +28,8 @@ void loop() {
       pll_run();
     }
     pll_was_running = run_pll;
+    ethernet_send_ntp_stats();
+    monitor_flush();
   }
   console_write_buffered();
   gps_poll();

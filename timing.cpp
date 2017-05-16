@@ -301,8 +301,6 @@ void pll_run() {
     health_set_fll_status(FLL_OK);
     health_reset_fll_watchdog();
   }
-  ethernet_send_ntp_stats();
-  monitor_flush();
 }
 
 void pll_enter_holdover() {
