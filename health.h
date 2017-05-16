@@ -7,7 +7,7 @@ enum pll_status_t {
 };
 
 #ifdef HEALTH_H_DEFINE_CONSTANTS
-char *pll_status_description[] = {
+const char *pll_status_description[] = {
   [PLL_UNLOCK] = "UNLOCK",
   [PLL_OK]     = "OK"
 };
@@ -19,7 +19,7 @@ enum fll_status_t {
 };
 
 #ifdef HEALTH_H_DEFINE_CONSTANTS
-char *fll_status_description[] = {
+const char *fll_status_description[] = {
   [FLL_UNLOCK] = "UNLOCK",
   [FLL_OK]     = "OK"
 };
@@ -32,7 +32,7 @@ enum gps_status_t {
 };
 
 #ifdef HEALTH_H_DEFINE_CONSTANTS
-char *gps_status_description[] = {
+const char *gps_status_description[] = {
   [GPS_UNLOCK]      = "UNLOCK",
   [GPS_MINOR_ALARM] = "MINOR ALARM",
   [GPS_OK]          = "OK"
@@ -45,7 +45,7 @@ enum rb_status_t {
 };
 
 #ifdef HEALTH_H_DEFINE_CONSTANTS
-char *rb_status_description[] = {
+const char *rb_status_description[] = {
   [RB_UNLOCK] = "UNLOCK",
   [RB_OK]     = "OK"
 };
@@ -58,7 +58,7 @@ enum health_status_t {
 };
 
 #ifdef HEALTH_H_DEFINE_CONSTANTS
-char *health_status_description[] = {
+const char *health_status_description[] = {
   [HEALTH_UNLOCK]   = "UNLOCK",
   [HEALTH_HOLDOVER] = "HOLDOVER",
   [HEALTH_OK]       = "OK"

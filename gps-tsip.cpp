@@ -114,7 +114,7 @@ static unsigned char gps_payload[GPS_BUFFER_SIZE];
 static unsigned char *gps_payload_ptr;
 static char have_utcoffset = 0;
 
-void gps_handle_message();
+static void gps_handle_message();
 
 void gps_poll() {
   while (gps_can_read()) {
@@ -184,7 +184,7 @@ handle_data:
   }
 }
 
-void gps_timing_packet() {
+static void gps_timing_packet() {
   unsigned int gps_tow = (unsigned int)gps_payload[0] << 24
                 | (unsigned int)gps_payload[1] << 16
                 | (unsigned int)gps_payload[2] << 8
@@ -209,7 +209,7 @@ void gps_timing_packet() {
   debug(" ");
   debug_int(hour); debug(":"); debug_int(minute); debug(":"); debug_int(second);
 
-  static char *timing_flag_msg[][2] = {
+  static const char *timing_flag_msg[][2] = {
     {"GPSTIME", "UTCTIME"},
     {"GPSPPS", "UTCPPS"},
     {"TIME", 0},
@@ -231,12 +231,12 @@ void gps_timing_packet() {
   have_utcoffset = (timing_flag & 8) ? 0 : 1;
 }
 
-void gps_supplemental_timing_packet() {
-  static char *rcv_mode_msg[] = {
+static void gps_supplemental_timing_packet() {
+  static const char *rcv_mode_msg[] = {
     "AUTO", "1SAT", "MODE2", "2D", "3D", "DGPR", "CLOCK2D", "CLOCKOD"
   };
 
-  static char *alarm_msg[] = {
+  static const char *alarm_msg[] = {
     0, "ANT_OPEN", "ANT_SHORT", "NOT_TRACKING", 0, "SURVEYING",
     "NO_POSITION", "LEAP", "TEST_MODE", "BAD_POSITION",
     0, "ALMANAC"
@@ -244,7 +244,7 @@ void gps_supplemental_timing_packet() {
 
   static unsigned short alarm_mask = 0xBEE;
 
-  static char *gps_status_msg[] = {
+  static const char *gps_status_msg[] = {
     "OK", "NO_TIME", 0, "PDOP", 0, 0, 0, 0,
     "0SV", "1SV", "2SV", "3SV", "BAD_SV", 0, 0, 0,
     "TRAIM_ERROR"
@@ -307,7 +307,7 @@ void gps_supplemental_timing_packet() {
   health_reset_gps_watchdog();
 }
 
-void gps_handle_message() {
+static void gps_handle_message() {
   switch (gps_packetid) {
     case 0x8FAB:
       gps_timing_packet();

@@ -17,7 +17,7 @@ static uint32_t fll_watchdog = ~0UL;
 
 void health_update();
 
-void health_notify_change(char *system, char *msg[], int old_status, int new_status) {
+void health_notify_change(const char *system, const char *msg[], int old_status, int new_status) {
   debug("Health: ");
   debug(system);
   debug(" changed state from ");
