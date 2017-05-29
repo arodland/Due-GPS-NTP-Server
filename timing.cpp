@@ -150,8 +150,6 @@ void pll_run() {
   if (pps_ns > 500000000)
     pps_ns -= 1000000000;
 
-  int32_t dither = 0;
-
   debug("PPS: ");
   debug(pps_ns);
 //  debug(" + ");
@@ -282,7 +280,7 @@ void pll_run() {
   }
 
   prev_slew_rate = applied_rate - (fll_rate + fll_extra);
-  prev_pps_ns = pps_ns - dither;
+  prev_pps_ns = pps_ns;
   prev_pps_filtered = pps_filtered;
   if (!prev_valid) {
     for (int i = 0 ; i < PPS_FILTER_DEPTH ; i++) {
