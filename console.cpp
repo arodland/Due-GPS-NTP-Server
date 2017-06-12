@@ -130,9 +130,8 @@ static void console_handle_command() {
       Console.print("]");
       if (i < cmd_words - 1)
         Console.print(" ");
-      else 
-        Console.print("\r\n");
     }
+    Console.print("\r\n");
   }
   console_reset_input();
 }
