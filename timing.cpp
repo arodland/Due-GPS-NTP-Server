@@ -92,7 +92,6 @@ static int32_t fll_2a = 0;
 static int32_t fll_extra = 0;
 static int32_t prev_slew_rate = 0;
 
-static int32_t pps_filter[PPS_FILTER_DEPTH];
 static int32_t filter_carry = 0;
 
 static int pll_min_factor = PLL_MIN_FACTOR;
@@ -112,9 +111,6 @@ void pll_reset_state() {
   fll_accum = 0;
   fll_2a = 0;
   fll_extra = 0;
-  for (int i = 0 ; i < PPS_FILTER_DEPTH ; i++) {
-    pps_filter[i] = 0;
-  }
   filter_carry = 0;
   prev_pps_filtered = 0;
   pll_factor = pll_min_factor;
@@ -184,14 +180,14 @@ void pll_run() {
 
   monitor_send("phase", pps_ns);
 
-  int32_t pps_filtered = pps_ns;
+  int32_t pps_filtered;
+
   if (prev_valid) {
-    for (int i = 0 ; i < PPS_FILTER_DEPTH ; i++) {
-      pps_filtered += pps_filter[i] + filter_carry;
-      filter_carry = pps_filtered % 2;
-      pps_filtered /= 2;
-      pps_filter[i] = pps_filtered;
-    }
+    pps_filtered = (PPS_FILTER_FACTOR - 1) * prev_pps_filtered + pps_ns + filter_carry;
+    filter_carry = pps_filtered % PPS_FILTER_FACTOR;
+    pps_filtered /= PPS_FILTER_FACTOR;
+  } else {
+    pps_filtered = pps_ns;
   }
 
   debug(" (");
@@ -283,9 +279,6 @@ void pll_run() {
   prev_pps_ns = pps_ns;
   prev_pps_filtered = pps_filtered;
   if (!prev_valid) {
-    for (int i = 0 ; i < PPS_FILTER_DEPTH ; i++) {
-      pps_filter[i] = prev_pps_ns;
-    }
     prev_valid = 1;
   }
 

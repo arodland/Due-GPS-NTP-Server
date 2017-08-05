@@ -39,7 +39,7 @@
 #define PLL_MIN_FACTOR 600
 #define PLL_MAX_FACTOR 5400
 
-#define PPS_FILTER_DEPTH 30
+#define PPS_FILTER_FACTOR 32
 
 #define PLL_HEALTHY_THRESHOLD_NS 1000 /* PLL is synced if within this range */
 #define HOLDOVER_LIMIT_SEC 86400 /* Can holdover for this many seconds after having a valid frequency */
