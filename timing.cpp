@@ -178,7 +178,7 @@ void pll_run() {
     ) {
     monitor_flush();
     timers_jam_sync();
-    pll_reset();
+    pll_reset_state();
     return;
   }
 
