@@ -58,7 +58,7 @@ static void timers_sync() {
   int32_t diff;
   do {
     diff = TC0->TC_CHANNEL[1].TC_CV - tgt;
-  } while (diff);
+  } while (diff > 1 || diff < -1);
   TC0->TC_BCR = TC_BCR_SYNC;
 }
 
