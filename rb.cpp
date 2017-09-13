@@ -29,13 +29,15 @@ int32_t rb_set_frequency(int32_t ppt) {
   int32_t tenths = ppt % 10;
   if (tenths < 0)
     tenths = -tenths;
-  Rb.print("f");
-  Rb.print(tens);
+
+  String buf = "f";
+  buf += String(tens, DEC);
   if (tenths) {
-    Rb.print(".");
-    Rb.print(tenths);
+    buf += ".";
+    buf += String(tenths, DEC);
   }
-  Rb.print("\r\n");
+  buf += "\r\n";
+  Rb.print(buf);
 
   rb_ppt = ppt;
   return rb_ppt;
