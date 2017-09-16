@@ -182,7 +182,7 @@ void pll_run() {
 
   int32_t pps_filtered;
 
-  if (prev_valid) {
+  if (prev_valid && uptime > 120) {
     pps_filtered = (PPS_FILTER_FACTOR - 1) * prev_pps_filtered + pps_ns + filter_carry;
     filter_carry = pps_filtered % PPS_FILTER_FACTOR;
     pps_filtered /= PPS_FILTER_FACTOR;
@@ -201,27 +201,10 @@ void pll_run() {
   fll_extra = 0;
 
   if (prev_valid) {
-    if (uptime >= 60) {
+    if (uptime >= 180) {
       fll_accum += prev_slew_rate - 1000 * (pps_filtered - prev_pps_filtered);
       monitor_send("fll_accum", fll_accum);
-    }
-    if (uptime == 180) {
-      debug("FLL: ");
-      debug(fll_rate);
-      debug(" + ");
-      debug(fll_accum);
-      debug(" / 120 = ");
-      fll_rate += fll_accum / 120;
-      if (fll_rate > FLL_MAX) {
-        fll_rate = FLL_MAX;
-      }
-      if (fll_rate < -FLL_MAX) {
-        fll_rate = -FLL_MAX;
-      }
-      debug(fll_rate);
-      debug("\r\n");
-      fll_accum = 0;
-    } else if (uptime > 180) {
+
       int32_t mod_rate = 2 * fll_accum / (fll_factor * FLL_SMOOTH);
       if (mod_rate > 0) {
         mod_rate++;
