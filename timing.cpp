@@ -265,7 +265,7 @@ void pll_run() {
     prev_valid = 1;
   }
 
-  if (pps_ns > PLL_HEALTHY_THRESHOLD_NS || pps_ns < -PLL_HEALTHY_THRESHOLD_NS) {
+  if (pps_filtered > PLL_HEALTHY_THRESHOLD_NS || pps_filtered < -PLL_HEALTHY_THRESHOLD_NS) {
     health_set_pll_status(PLL_UNLOCK);
   } else {
     uint32_t now_upper, now_lower;
