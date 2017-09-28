@@ -21,6 +21,7 @@ static char pll_was_running = 0;
 void loop() {
   if (pps_int) {
     pps_int = 0;
+    health_print_status();
     char run_pll = health_should_run_pll();
     if (run_pll) {
       if (!pll_was_running) {

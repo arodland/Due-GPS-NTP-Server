@@ -168,3 +168,27 @@ char health_should_run_pll() {
     return 0;
   return 1;
 }
+
+void health_print_status() {
+  if (health_status != HEALTH_OK) {
+    debug("Health: ");
+    debug(health_status_description[health_status]);
+    if (rb_status != RB_OK) {
+      debug(" Rb: ");
+      debug(rb_status_description[rb_status]);
+    }
+    if (gps_status != GPS_OK) {
+      debug(" GPS: ");
+      debug(gps_status_description[gps_status]);
+    }
+    if (fll_status != FLL_OK) {
+      debug(" FLL: ");
+      debug(fll_status_description[fll_status]);
+    }
+    if (pll_status != PLL_OK) {
+      debug(" PLL: ");
+      debug(pll_status_description[pll_status]);
+    }
+    debug("\r\n");
+  }
+}
