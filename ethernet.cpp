@@ -36,12 +36,12 @@ static const char ntp_packet_template[48] = {
   0, 0, 0, 0, 0, 0, 0, 0 /* Transmit Timestamp */
 };
 
-void ethernet_send_udp_packet(const char dst_ip[4], const char dst_mac[6], 
+void ethernet_send_udp_packet(const char dst_ip[4], const char dst_mac[6],
     uint16_t dst_port, uint16_t src_port, const char *payload, unsigned int len) {
-  unsigned char sndbuf[ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE + 512];
+  unsigned char sndbuf[ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE + 1024];
   uint32_t ip_checksum = 0;
 
-  if (len > 512) {
+  if (len > 1024) {
     debug("Tried to send a too-long packet");
     return;
   }

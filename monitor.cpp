@@ -5,7 +5,7 @@
 #include "timing.h"
 #include "ethernet.h"
 
-static char monitor_packet[512];
+static char monitor_packet[1024];
 
 void monitor_flush() {
   const char ip[4] = {MONITOR_IP_ADDRESS};
