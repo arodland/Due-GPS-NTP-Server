@@ -37,64 +37,64 @@ static const char ntp_packet_template[48] = {
 };
 
 void ethernet_send_udp_packet(const char dst_ip[4], const char dst_mac[6], 
-		uint16_t dst_port, uint16_t src_port, const char *payload, unsigned int len) {
-	unsigned char sndbuf[ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE + 512];
-	uint32_t ip_checksum = 0;
+    uint16_t dst_port, uint16_t src_port, const char *payload, unsigned int len) {
+  unsigned char sndbuf[ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE + 512];
+  uint32_t ip_checksum = 0;
 
-	if (len > 512) {
-		debug("Tried to send a too-long packet");
-		return;
-	}
+  if (len > 512) {
+    debug("Tried to send a too-long packet");
+    return;
+  }
 
-	p_ethernet_header_t p_eth_header = (p_ethernet_header_t)sndbuf;
-	p_ip_header_t p_ip_header = (p_ip_header_t)(sndbuf + ETH_HEADER_SIZE);
-	p_udp_header_t p_udp_header = (p_udp_header_t)(sndbuf + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE);
-	unsigned char *payload_out = sndbuf + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE;
+  p_ethernet_header_t p_eth_header = (p_ethernet_header_t)sndbuf;
+  p_ip_header_t p_ip_header = (p_ip_header_t)(sndbuf + ETH_HEADER_SIZE);
+  p_udp_header_t p_udp_header = (p_udp_header_t)(sndbuf + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE);
+  unsigned char *payload_out = sndbuf + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE;
 
-	memcpy(p_eth_header->et_dest, dst_mac, 6);
-	memcpy(p_eth_header->et_src, gs_uc_mac_address, 6);
+  memcpy(p_eth_header->et_dest, dst_mac, 6);
+  memcpy(p_eth_header->et_src, gs_uc_mac_address, 6);
   p_eth_header->et_protlen = SWAP16(0x0800);
 
 
-	p_ip_header->ip_hl_v = 0x45;
-	p_ip_header->ip_tos = 0;
-	p_ip_header->ip_len = SWAP16(ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE + len);
-	p_ip_header->ip_id = 0;
-	p_ip_header->ip_off = 0;
-	p_ip_header->ip_ttl = 64;
-	p_ip_header->ip_p = IP_PROT_UDP;
-	p_ip_header->ip_sum = 0;
-	memcpy(p_ip_header->ip_src, gs_uc_ip_address, 4);
-	memcpy(p_ip_header->ip_dst, dst_ip, 4);
+  p_ip_header->ip_hl_v = 0x45;
+  p_ip_header->ip_tos = 0;
+  p_ip_header->ip_len = SWAP16(ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE + len);
+  p_ip_header->ip_id = 0;
+  p_ip_header->ip_off = 0;
+  p_ip_header->ip_ttl = 64;
+  p_ip_header->ip_p = IP_PROT_UDP;
+  p_ip_header->ip_sum = 0;
+  memcpy(p_ip_header->ip_src, gs_uc_ip_address, 4);
+  memcpy(p_ip_header->ip_dst, dst_ip, 4);
 
-	for (uint16_t *p = (uint16_t *)p_ip_header ; p < (uint16_t *)p_ip_header + 10 ; p++) {
-		ip_checksum += SWAP16(*p);
-	}
-	while (ip_checksum > 0xffff) {
-		ip_checksum = (ip_checksum & 0xffff) + (ip_checksum >> 16);
-	}
-	p_ip_header->ip_sum = ~SWAP16(ip_checksum);
+  for (uint16_t *p = (uint16_t *)p_ip_header ; p < (uint16_t *)p_ip_header + 10 ; p++) {
+    ip_checksum += SWAP16(*p);
+  }
+  while (ip_checksum > 0xffff) {
+    ip_checksum = (ip_checksum & 0xffff) + (ip_checksum >> 16);
+  }
+  p_ip_header->ip_sum = ~SWAP16(ip_checksum);
 
 
-	p_udp_header->port_src = SWAP16(src_port);
-	p_udp_header->port_dst = SWAP16(dst_port);
-	p_udp_header->length = SWAP16(ETH_UDP_HEADER_SIZE + len);
-	p_udp_header->cksum = 0;
+  p_udp_header->port_src = SWAP16(src_port);
+  p_udp_header->port_dst = SWAP16(dst_port);
+  p_udp_header->length = SWAP16(ETH_UDP_HEADER_SIZE + len);
+  p_udp_header->cksum = 0;
 
-	memcpy(payload_out, payload, len);
-	uint8_t ul_rc = emac_dev_write(&gs_emac_dev, sndbuf,
-			ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE + len, NULL);
-	if (ul_rc != EMAC_OK) {
-		debug("UDP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
-	}
+  memcpy(payload_out, payload, len);
+  uint8_t ul_rc = emac_dev_write(&gs_emac_dev, sndbuf,
+      ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE + len, NULL);
+  if (ul_rc != EMAC_OK) {
+    debug("UDP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
+  }
 }
 
 
 void do_ntp_request(unsigned char *pkt, unsigned int len) {
-	p_ethernet_header_t p_eth_header = (p_ethernet_header_t)pkt;
-	p_ip_header_t p_ip_header = (p_ip_header_t)(pkt + ETH_HEADER_SIZE);
-	p_udp_header_t p_udp_header = (p_udp_header_t)(pkt + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE);
-	unsigned char *buf = pkt + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE;
+  p_ethernet_header_t p_eth_header = (p_ethernet_header_t)pkt;
+  p_ip_header_t p_ip_header = (p_ip_header_t)(pkt + ETH_HEADER_SIZE);
+  p_udp_header_t p_udp_header = (p_udp_header_t)(pkt + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE);
+  unsigned char *buf = pkt + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE;
   unsigned char version = (buf[0] >> 3) & 7;
   unsigned char mode = buf[0] & 7;
 
@@ -113,25 +113,25 @@ void do_ntp_request(unsigned char *pkt, unsigned int len) {
   }
 
   if (mode == 3) { /* Client request */
-		// Fill the destination address and source address
-		for (int i = 0; i < 6; i++) {
-			// Swap ethernet destination address and ethernet source address
-			p_eth_header->et_dest[i] = p_eth_header->et_src[i];
-			p_eth_header->et_src[i] = gs_uc_mac_address[i];
-		}
-		// Swap the source IP address and the destination IP address
-		for (int i = 0; i < 4; i++) {
-			p_ip_header->ip_dst[i] = p_ip_header->ip_src[i];
-			p_ip_header->ip_src[i] = gs_uc_ip_address[i];
-		}
-		// Swap the UDP src and dest port
-		p_udp_header->port_dst = p_udp_header->port_src;
-		p_udp_header->port_src = SWAP16(123);
-		p_udp_header->cksum = 0;
+    // Fill the destination address and source address
+    for (int i = 0; i < 6; i++) {
+      // Swap ethernet destination address and ethernet source address
+      p_eth_header->et_dest[i] = p_eth_header->et_src[i];
+      p_eth_header->et_src[i] = gs_uc_mac_address[i];
+    }
+    // Swap the source IP address and the destination IP address
+    for (int i = 0; i < 4; i++) {
+      p_ip_header->ip_dst[i] = p_ip_header->ip_src[i];
+      p_ip_header->ip_src[i] = gs_uc_ip_address[i];
+    }
+    // Swap the UDP src and dest port
+    p_udp_header->port_dst = p_udp_header->port_src;
+    p_udp_header->port_src = SWAP16(123);
+    p_udp_header->cksum = 0;
 
     uint32_t tx_ts_upper, tx_ts_lower, reftime_upper, reftime_lower, rootdisp;
-		unsigned char origin_ts[8];
-		memcpy(origin_ts, buf + 40, 8);
+    unsigned char origin_ts[8];
+    memcpy(origin_ts, buf + 40, 8);
 
     memcpy(buf, ntp_packet_template, 48);
     /* XXX set Leap Indicator */
@@ -181,14 +181,14 @@ void do_ntp_request(unsigned char *pkt, unsigned int len) {
       buf[47] = (tx_ts_lower) & 0xff;
     }
 
-		uint8_t ul_rc = emac_dev_write(&gs_emac_dev, pkt,
-				48 + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE, NULL);
-		if (ul_rc != EMAC_OK) {
-			debug("NTP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
+    uint8_t ul_rc = emac_dev_write(&gs_emac_dev, pkt,
+        48 + ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE, NULL);
+    if (ul_rc != EMAC_OK) {
+      debug("NTP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
       ntp_error++;
-		} else {
+    } else {
       ntp_ok++;
-		}
+    }
   } else {
     ntp_wrongmode++;
   }
@@ -226,282 +226,282 @@ void ethernet_pio_setup() {
 
 static uint16_t emac_icmp_checksum(uint16_t *p_buff, uint32_t ul_len)
 {
-	uint32_t i, ul_tmp;
+  uint32_t i, ul_tmp;
 
-	for (i = 0, ul_tmp = 0; i < ul_len; i++, p_buff++) {
+  for (i = 0, ul_tmp = 0; i < ul_len; i++, p_buff++) {
 
-		ul_tmp += SWAP16(*p_buff);
-	}
-	ul_tmp = (ul_tmp & 0xffff) + (ul_tmp >> 16);
+    ul_tmp += SWAP16(*p_buff);
+  }
+  ul_tmp = (ul_tmp & 0xffff) + (ul_tmp >> 16);
 
-	return (uint16_t) (~ul_tmp);
+  return (uint16_t) (~ul_tmp);
 }
 
 static void emac_display_ip_packet(p_ip_header_t p_ip_header, uint32_t ul_size)
 {
-	switch (p_ip_header->ip_p) {
-	case IP_PROT_ICMP:
-                debug("ICMP");
-		break;
+  switch (p_ip_header->ip_p) {
+    case IP_PROT_ICMP:
+      debug("ICMP");
+      break;
 
-	case IP_PROT_IP:
-                debug("IP");
-		break;
+    case IP_PROT_IP:
+      debug("IP");
+      break;
 
-	case IP_PROT_TCP:
-                debug("TCP");
-		break;
+    case IP_PROT_TCP:
+      debug("TCP");
+      break;
 
-	case IP_PROT_UDP:
-                debug("UDP");
-		break;
+    case IP_PROT_UDP:
+      debug("UDP");
+      break;
 
-	default:
-                debug("Proto "); debug(p_ip_header->ip_p);
-		break;
-	}
+    default:
+      debug("Proto "); debug(p_ip_header->ip_p);
+      break;
+  }
 
-        debug(" packet from ");
-        debug(p_ip_header->ip_src[0]); debug(".");
-        debug(p_ip_header->ip_src[1]); debug(".");
-        debug(p_ip_header->ip_src[2]); debug(".");
-        debug(p_ip_header->ip_src[3]); debug("\r\n");
+  debug(" packet from ");
+  debug(p_ip_header->ip_src[0]); debug(".");
+  debug(p_ip_header->ip_src[1]); debug(".");
+  debug(p_ip_header->ip_src[2]); debug(".");
+  debug(p_ip_header->ip_src[3]); debug("\r\n");
 }
 
 static void emac_process_arp_packet(uint8_t *p_uc_data, uint32_t ul_size)
 {
-	uint32_t i;
-	uint8_t ul_rc = EMAC_OK;
+  uint32_t i;
+  uint8_t ul_rc = EMAC_OK;
 
-	p_ethernet_header_t p_eth = (p_ethernet_header_t) p_uc_data;
-	p_arp_header_t p_arp = (p_arp_header_t) (p_uc_data + ETH_HEADER_SIZE);
+  p_ethernet_header_t p_eth = (p_ethernet_header_t) p_uc_data;
+  p_arp_header_t p_arp = (p_arp_header_t) (p_uc_data + ETH_HEADER_SIZE);
 
-	if (SWAP16(p_arp->ar_op) == ARP_REQUEST) {
-		// ARP reply operation
-		p_arp->ar_op = SWAP16(ARP_REPLY);
+  if (SWAP16(p_arp->ar_op) == ARP_REQUEST) {
+    // ARP reply operation
+    p_arp->ar_op = SWAP16(ARP_REPLY);
 
-		// Fill the destination address and source address
-		for (i = 0; i < 6; i++) {
-			// Swap ethernet destination address and ethernet source address
-			p_eth->et_dest[i] = p_eth->et_src[i];
-			p_eth->et_src[i] = gs_uc_mac_address[i];
-			p_arp->ar_tha[i] = p_arp->ar_sha[i];
-			p_arp->ar_sha[i] = gs_uc_mac_address[i];
-		}
-		// Swap the source IP address and the destination IP address
-		for (i = 0; i < 4; i++) {
-			p_arp->ar_tpa[i] = p_arp->ar_spa[i];
-			p_arp->ar_spa[i] = gs_uc_ip_address[i];
-		}
-		ul_rc = emac_dev_write(&gs_emac_dev, p_uc_data, ul_size, NULL);
-		if (ul_rc != EMAC_OK) {
-                        debug("ARP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
-		}
-	} else if (SWAP16(p_arp->ar_op) == ARP_REPLY && arp_callback) {
-		arp_callback(p_arp->ar_spa, p_arp->ar_sha);
-	}
+    // Fill the destination address and source address
+    for (i = 0; i < 6; i++) {
+      // Swap ethernet destination address and ethernet source address
+      p_eth->et_dest[i] = p_eth->et_src[i];
+      p_eth->et_src[i] = gs_uc_mac_address[i];
+      p_arp->ar_tha[i] = p_arp->ar_sha[i];
+      p_arp->ar_sha[i] = gs_uc_mac_address[i];
+    }
+    // Swap the source IP address and the destination IP address
+    for (i = 0; i < 4; i++) {
+      p_arp->ar_tpa[i] = p_arp->ar_spa[i];
+      p_arp->ar_spa[i] = gs_uc_ip_address[i];
+    }
+    ul_rc = emac_dev_write(&gs_emac_dev, p_uc_data, ul_size, NULL);
+    if (ul_rc != EMAC_OK) {
+      debug("ARP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
+    }
+  } else if (SWAP16(p_arp->ar_op) == ARP_REPLY && arp_callback) {
+    arp_callback(p_arp->ar_spa, p_arp->ar_sha);
+  }
 }
 
 static void emac_process_ip_packet(uint8_t *p_uc_data, uint32_t ul_size)
 {
-	uint32_t i;
-	uint32_t ul_icmp_len;
-	int32_t ul_rc = EMAC_OK;
-	uint16_t dst_port;
+  uint32_t i;
+  uint32_t ul_icmp_len;
+  int32_t ul_rc = EMAC_OK;
+  uint16_t dst_port;
 
-	p_ethernet_header_t p_eth = (p_ethernet_header_t) p_uc_data;
-	p_ip_header_t p_ip_header = (p_ip_header_t) (p_uc_data + ETH_HEADER_SIZE);
+  p_ethernet_header_t p_eth = (p_ethernet_header_t) p_uc_data;
+  p_ip_header_t p_ip_header = (p_ip_header_t) (p_uc_data + ETH_HEADER_SIZE);
 
-	p_udp_header_t p_udp_header =
-			(p_udp_header_t) ((int8_t *) p_ip_header +
-			ETH_IP_HEADER_SIZE);
-	p_icmp_echo_header_t p_icmp_echo =
-			(p_icmp_echo_header_t) ((int8_t *) p_ip_header +
-			ETH_IP_HEADER_SIZE);
+  p_udp_header_t p_udp_header =
+    (p_udp_header_t) ((int8_t *) p_ip_header +
+        ETH_IP_HEADER_SIZE);
+  p_icmp_echo_header_t p_icmp_echo =
+    (p_icmp_echo_header_t) ((int8_t *) p_ip_header +
+        ETH_IP_HEADER_SIZE);
 
-	switch (p_ip_header->ip_p) {
-	case IP_PROT_ICMP:
-		if (p_icmp_echo->type == ICMP_ECHO_REQUEST) {
-			p_icmp_echo->type = ICMP_ECHO_REPLY;
-			p_icmp_echo->code = 0;
-			p_icmp_echo->cksum = 0;
+  switch (p_ip_header->ip_p) {
+    case IP_PROT_ICMP:
+      if (p_icmp_echo->type == ICMP_ECHO_REQUEST) {
+        p_icmp_echo->type = ICMP_ECHO_REPLY;
+        p_icmp_echo->code = 0;
+        p_icmp_echo->cksum = 0;
 
-			// Checksum of the ICMP message
-			ul_icmp_len = (SWAP16(p_ip_header->ip_len) - ETH_IP_HEADER_SIZE);
-			if (ul_icmp_len % 2) {
-				*((uint8_t *) p_icmp_echo + ul_icmp_len) = 0;
-				ul_icmp_len++;
-			}
-			ul_icmp_len = ul_icmp_len / sizeof(uint16_t);
+        // Checksum of the ICMP message
+        ul_icmp_len = (SWAP16(p_ip_header->ip_len) - ETH_IP_HEADER_SIZE);
+        if (ul_icmp_len % 2) {
+          *((uint8_t *) p_icmp_echo + ul_icmp_len) = 0;
+          ul_icmp_len++;
+        }
+        ul_icmp_len = ul_icmp_len / sizeof(uint16_t);
 
-			p_icmp_echo->cksum = SWAP16(
-					emac_icmp_checksum((uint16_t *)p_icmp_echo, ul_icmp_len));
-			// Swap the IP destination  address and the IP source address
-			for (i = 0; i < 4; i++) {
-				p_ip_header->ip_dst[i] =
-						p_ip_header->ip_src[i];
-				p_ip_header->ip_src[i] = gs_uc_ip_address[i];
-			}
-			// Swap ethernet destination address and ethernet source address
-			for (i = 0; i < 6; i++) {
-				// Swap ethernet destination address and ethernet source address
-				p_eth->et_dest[i] = p_eth->et_src[i];
-				p_eth->et_src[i] = gs_uc_mac_address[i];
-			}
-			// Send the echo_reply
-			ul_rc = emac_dev_write(&gs_emac_dev, p_uc_data,
-					SWAP16(p_ip_header->ip_len) + 14, NULL);
-			if (ul_rc != EMAC_OK) {
-                                debug("ICMP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
-			}
-		}
-		break;
-	case IP_PROT_UDP:
-		dst_port = SWAP16(p_udp_header->port_dst);
-		if (dst_port == 123) {
-			do_ntp_request(
-					p_uc_data,
-					ul_size - (ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE)
-			);
-		} else {
-//			debug("UDP port "); debug(dst_port); debug("\r\n");
-		}
-		break;
-	default:
-		break;
-	}
+        p_icmp_echo->cksum = SWAP16(
+            emac_icmp_checksum((uint16_t *)p_icmp_echo, ul_icmp_len));
+        // Swap the IP destination  address and the IP source address
+        for (i = 0; i < 4; i++) {
+          p_ip_header->ip_dst[i] =
+            p_ip_header->ip_src[i];
+          p_ip_header->ip_src[i] = gs_uc_ip_address[i];
+        }
+        // Swap ethernet destination address and ethernet source address
+        for (i = 0; i < 6; i++) {
+          // Swap ethernet destination address and ethernet source address
+          p_eth->et_dest[i] = p_eth->et_src[i];
+          p_eth->et_src[i] = gs_uc_mac_address[i];
+        }
+        // Send the echo_reply
+        ul_rc = emac_dev_write(&gs_emac_dev, p_uc_data,
+            SWAP16(p_ip_header->ip_len) + 14, NULL);
+        if (ul_rc != EMAC_OK) {
+          debug("ICMP send error: 0x"); debug_hex(ul_rc); debug("\r\n");
+        }
+      }
+      break;
+    case IP_PROT_UDP:
+      dst_port = SWAP16(p_udp_header->port_dst);
+      if (dst_port == 123) {
+        do_ntp_request(
+            p_uc_data,
+            ul_size - (ETH_HEADER_SIZE + ETH_IP_HEADER_SIZE + ETH_UDP_HEADER_SIZE)
+            );
+      } else {
+        //			debug("UDP port "); debug(dst_port); debug("\r\n");
+      }
+      break;
+    default:
+      break;
+  }
 }
 
 static void emac_process_eth_packet(uint8_t *p_uc_data, uint32_t ul_size)
 {
-	uint16_t us_pkt_format;
+  uint16_t us_pkt_format;
 
-	p_ethernet_header_t p_eth = (p_ethernet_header_t) (p_uc_data);
-	p_ip_header_t p_ip_header = (p_ip_header_t) (p_uc_data + ETH_HEADER_SIZE);
-	ip_header_t ip_header;
-	us_pkt_format = SWAP16(p_eth->et_protlen);
+  p_ethernet_header_t p_eth = (p_ethernet_header_t) (p_uc_data);
+  p_ip_header_t p_ip_header = (p_ip_header_t) (p_uc_data + ETH_HEADER_SIZE);
+  ip_header_t ip_header;
+  us_pkt_format = SWAP16(p_eth->et_protlen);
 
-	switch (us_pkt_format) {
-	// ARP Packet format
-	case ETH_PROT_ARP:
-		// Process the ARP packet
-		emac_process_arp_packet(p_uc_data, ul_size);
+  switch (us_pkt_format) {
+    // ARP Packet format
+    case ETH_PROT_ARP:
+      // Process the ARP packet
+      emac_process_arp_packet(p_uc_data, ul_size);
 
-		break;
+      break;
 
-	// IP protocol frame
-	case ETH_PROT_IP:
-		// Backup the header
-		memcpy(&ip_header, p_ip_header, sizeof(ip_header_t));
+      // IP protocol frame
+    case ETH_PROT_IP:
+      // Backup the header
+      memcpy(&ip_header, p_ip_header, sizeof(ip_header_t));
 
-		// Process the IP packet
-		emac_process_ip_packet(p_uc_data, ul_size);
-		break;
+      // Process the IP packet
+      emac_process_ip_packet(p_uc_data, ul_size);
+      break;
 
-	default:
-		break;
-	}
+    default:
+      break;
+  }
 }
 
 void EMAC_Handler(void)
 {
-	time_get_ntp(*TIMER_CLOCK, &eh_ts_upper, &eh_ts_lower, NTP_FUDGE_RX);
-	emac_handler(&gs_emac_dev);
+  time_get_ntp(*TIMER_CLOCK, &eh_ts_upper, &eh_ts_lower, NTP_FUDGE_RX);
+  emac_handler(&gs_emac_dev);
 }
 
 void ether_rx_handler(uint32_t rx_status) {
-	recv_ts_upper = eh_ts_upper;
-	recv_ts_lower = eh_ts_lower;
-	ether_int = 1;
+  recv_ts_upper = eh_ts_upper;
+  recv_ts_lower = eh_ts_lower;
+  ether_int = 1;
 }
 
 void ether_init() {
-	uint32_t ul_frm_size;
-	volatile uint32_t ul_delay;
-	emac_options_t emac_option;
-   
-	ethernet_pio_setup();
+  uint32_t ul_frm_size;
+  volatile uint32_t ul_delay;
+  emac_options_t emac_option;
 
- 	// Display MAC & IP settings
-        debug("MAC: ");
-        debug_hex(gs_uc_mac_address[0]); debug(":");
-        debug_hex(gs_uc_mac_address[1]); debug(":");
-        debug_hex(gs_uc_mac_address[2]); debug(":");
-        debug_hex(gs_uc_mac_address[3]); debug(":");
-        debug_hex(gs_uc_mac_address[4]); debug(":");
-        debug_hex(gs_uc_mac_address[5]); debug("\r\n");
+  ethernet_pio_setup();
 
-        debug("IP: ");
-        debug(gs_uc_ip_address[0]); debug(".");
-        debug(gs_uc_ip_address[1]); debug(".");
-        debug(gs_uc_ip_address[2]); debug(".");
-        debug(gs_uc_ip_address[3]); debug("\r\n");
+  // Display MAC & IP settings
+  debug("MAC: ");
+  debug_hex(gs_uc_mac_address[0]); debug(":");
+  debug_hex(gs_uc_mac_address[1]); debug(":");
+  debug_hex(gs_uc_mac_address[2]); debug(":");
+  debug_hex(gs_uc_mac_address[3]); debug(":");
+  debug_hex(gs_uc_mac_address[4]); debug(":");
+  debug_hex(gs_uc_mac_address[5]); debug("\r\n");
 
-	// Reset PHY
-	rstc_set_external_reset(RSTC, 13); // (2^(13+1))/32768
-	rstc_reset_extern(RSTC);
-	while (rstc_get_status(RSTC) & RSTC_SR_NRSTL) {
-	};
+  debug("IP: ");
+  debug(gs_uc_ip_address[0]); debug(".");
+  debug(gs_uc_ip_address[1]); debug(".");
+  debug(gs_uc_ip_address[2]); debug(".");
+  debug(gs_uc_ip_address[3]); debug("\r\n");
 
-	// Wait for PHY to be ready (CAT811: Max400ms)
-	ul_delay = SystemCoreClock / 1000 / 3 * 400;
-	while (ul_delay--);
+  // Reset PHY
+  rstc_set_external_reset(RSTC, 13); // (2^(13+1))/32768
+  rstc_reset_extern(RSTC);
+  while (rstc_get_status(RSTC) & RSTC_SR_NRSTL) {
+  };
 
-	// Enable EMAC clock
-	pmc_enable_periph_clk(ID_EMAC);
+  // Wait for PHY to be ready (CAT811: Max400ms)
+  ul_delay = SystemCoreClock / 1000 / 3 * 400;
+  while (ul_delay--);
 
-	// Fill in EMAC options
-	emac_option.uc_copy_all_frame = 0;
-	emac_option.uc_no_boardcast = 0;
+  // Enable EMAC clock
+  pmc_enable_periph_clk(ID_EMAC);
 
-	memcpy(emac_option.uc_mac_addr, gs_uc_mac_address, sizeof(gs_uc_mac_address));
+  // Fill in EMAC options
+  emac_option.uc_copy_all_frame = 0;
+  emac_option.uc_no_boardcast = 0;
 
-	gs_emac_dev.p_hw = EMAC;
-  
-        debug("Init EMAC driver structure\r\n");
-	// Init EMAC driver structure
-	emac_dev_init(EMAC, &gs_emac_dev, &emac_option);
+  memcpy(emac_option.uc_mac_addr, gs_uc_mac_address, sizeof(gs_uc_mac_address));
 
-	// Enable Interrupt
-	NVIC_EnableIRQ(EMAC_IRQn);
-        
-        debug("Init MAC PHY driver\r\n");
+  gs_emac_dev.p_hw = EMAC;
 
-	// Init MAC PHY driver
-	if (ethernet_phy_init(EMAC, BOARD_EMAC_PHY_ADDR, SystemCoreClock)
-					!= EMAC_OK) {
-		debug("PHY Initialize ERROR!\r\n");
-		//return -1;
-	}
+  debug("Init EMAC driver structure\r\n");
+  // Init EMAC driver structure
+  emac_dev_init(EMAC, &gs_emac_dev, &emac_option);
 
-	// Auto Negotiate, work in RMII mode
-	if (ethernet_phy_auto_negotiate(EMAC, BOARD_EMAC_PHY_ADDR) != EMAC_OK) {
+  // Enable Interrupt
+  NVIC_EnableIRQ(EMAC_IRQn);
 
-		debug("Auto Negotiate ERROR!\r\n");
-		//return -1;
-	}
-        
-        debug("Establish ethernet link... ");
-	// Establish ethernet link
-	while (ethernet_phy_set_link(EMAC, BOARD_EMAC_PHY_ADDR, 1) != EMAC_OK) {
-          debug("ERROR\r\n");
-	}
-        debug("OK\r\n");
+  debug("Init MAC PHY driver\r\n");
 
-	emac_dev_set_rx_callback(&gs_emac_dev, ether_rx_handler);
+  // Init MAC PHY driver
+  if (ethernet_phy_init(EMAC, BOARD_EMAC_PHY_ADDR, SystemCoreClock)
+      != EMAC_OK) {
+    debug("PHY Initialize ERROR!\r\n");
+    //return -1;
+  }
+
+  // Auto Negotiate, work in RMII mode
+  if (ethernet_phy_auto_negotiate(EMAC, BOARD_EMAC_PHY_ADDR) != EMAC_OK) {
+
+    debug("Auto Negotiate ERROR!\r\n");
+    //return -1;
+  }
+
+  debug("Establish ethernet link... ");
+  // Establish ethernet link
+  while (ethernet_phy_set_link(EMAC, BOARD_EMAC_PHY_ADDR, 1) != EMAC_OK) {
+    debug("ERROR\r\n");
+  }
+  debug("OK\r\n");
+
+  emac_dev_set_rx_callback(&gs_emac_dev, ether_rx_handler);
 }
 
 void ether_recv() {
-	// Process packets
-	uint32_t ul_frm_size;
-	while (emac_dev_read(&gs_emac_dev, (uint8_t *) gs_uc_eth_buffer,
-					sizeof(gs_uc_eth_buffer), &ul_frm_size) == EMAC_OK) {
-		if (ul_frm_size > 0) {
-			// Handle input frame
-			emac_process_eth_packet((uint8_t *) gs_uc_eth_buffer, ul_frm_size);
-		} else {
-			break;
-		}
-	}
-	ether_int = 0;
+  // Process packets
+  uint32_t ul_frm_size;
+  while (emac_dev_read(&gs_emac_dev, (uint8_t *) gs_uc_eth_buffer,
+        sizeof(gs_uc_eth_buffer), &ul_frm_size) == EMAC_OK) {
+    if (ul_frm_size > 0) {
+      // Handle input frame
+      emac_process_eth_packet((uint8_t *) gs_uc_eth_buffer, ul_frm_size);
+    } else {
+      break;
+    }
+  }
+  ether_int = 0;
 }
