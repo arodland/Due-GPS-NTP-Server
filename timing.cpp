@@ -255,11 +255,13 @@ void pll_run() {
   } else {
     cycle ++;
 
-    if (cycle % 2 == 0 && pll_factor < pll_max_factor) {
-      pll_factor ++;
-    }
-    if (cycle % 8 == 0 && fll_factor < fll_max_factor) {
-      fll_factor ++;
+    if (pps_filtered >= -PLL_HEALTHY_THRESHOLD_NS && pps_filtered <= PLL_HEALTHY_THRESHOLD_NS) {
+      if (cycle % 2 == 0 && pll_factor < pll_max_factor) {
+        pll_factor ++;
+      }
+      if (cycle % 3 == 0 && fll_factor < fll_max_factor) {
+        fll_factor ++;
+      }
     }
   }
 
