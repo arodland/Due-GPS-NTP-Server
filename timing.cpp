@@ -182,10 +182,15 @@ void pll_run() {
 
   int32_t pps_filtered;
 
-  if (prev_valid && uptime > 120) {
-    pps_filtered = (PPS_FILTER_FACTOR - 1) * prev_pps_filtered + pps_ns + filter_carry;
-    filter_carry = pps_filtered % PPS_FILTER_FACTOR;
-    pps_filtered /= PPS_FILTER_FACTOR;
+  if (prev_valid && uptime > 2) {
+    int filter_factor = pll_factor / PPS_FILTER_DIV;
+    if (filter_factor < PPS_FILTER_MIN)
+      filter_factor = PPS_FILTER_MIN;
+    else if (filter_factor > PPS_FILTER_MAX)
+      filter_factor = PPS_FILTER_MAX;
+    pps_filtered = (filter_factor - 1) * prev_pps_filtered + pps_ns + filter_carry;
+    filter_carry = pps_filtered % filter_factor;
+    pps_filtered /= filter_factor;
   } else {
     pps_filtered = pps_ns;
   }
