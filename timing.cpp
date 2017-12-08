@@ -245,6 +245,9 @@ void pll_run() {
     }
   }
 
+  monitor_send("pll_factor", pll_factor);
+  monitor_send("fll_factor", fll_factor);
+
   int32_t rate = slew_rate + fll_rate + fll_extra;
   int32_t applied_rate = pll_set_rate(rate);
 
