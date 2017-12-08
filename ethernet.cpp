@@ -25,7 +25,7 @@ int ntp_invalid = 0, ntp_wrongversion = 0, ntp_wrongmode = 0, ntp_error = 0, ntp
 void (*arp_callback)(unsigned char[], unsigned char[]);
 
 static const char ntp_packet_template[48] = {
-  4 /* Mode: server reply */ | 3 << 3 /* Version: NTPv3 */,
+  0, /* Mode, version, leap indicator */
   1 /* Stratum */, 9 /* Poll: 512sec */, -23 /* Precision: 0.1 usec */,
   0, 0, 0, 0 /* Root delay */,
   0, 0, 0, 10 /* Root Dispersion */,
@@ -104,7 +104,7 @@ void do_ntp_request(unsigned char *pkt, unsigned int len) {
     return;
   }
 
-  if (version != 3 && version != 4) {
+  if (version < 1 || version > 4) {
     debug("NTP unknown version ");
     debug(version);
     debug("\r\n");
@@ -112,7 +112,7 @@ void do_ntp_request(unsigned char *pkt, unsigned int len) {
     return;
   }
 
-  if (mode == 3) { /* Client request */
+  if (mode == 3 || version == 1) { /* Client request */
     // Fill the destination address and source address
     for (int i = 0; i < 6; i++) {
       // Swap ethernet destination address and ethernet source address
@@ -134,14 +134,31 @@ void do_ntp_request(unsigned char *pkt, unsigned int len) {
     memcpy(origin_ts, buf + 40, 8);
 
     memcpy(buf, ntp_packet_template, 48);
+    switch (version) {
+      case 1:
+        buf[0] = 1 << 3; /* Version 1, no mode, no LI */
+        break;
+      case 2:
+      case 3:
+        buf[0] = (version << 3) | 4; /* Version 2 or 3, mode: client reply */
+        break;
+      case 4:
+        buf[0] = (3 << 3) | 4; /* Respond to v4 as v3 */
+    }
     /* XXX set Leap Indicator */
+
     /* Assume a 1ppm error accumulates as long as we're in holdover.
      * This is pessimistic if we were previously locked to Rb. */
-    rootdisp = health_get_ref_age() / 15 + 1;
-    buf[8] = (rootdisp >> 24) & 0xff;
-    buf[9] = (rootdisp >> 16) & 0xff;
-    buf[10] = (rootdisp >> 8) & 0xff;
-    buf[11] = (rootdisp) & 0xff;
+    if (version == 1) {
+      // 4295 / 2^32 ~~ 1e-6
+      buf[8] = 0; buf[9] = 0; buf[10] = 16; buf[11] = 199;
+    } else {
+      rootdisp = health_get_ref_age() / 15 + 1;
+      buf[8] = (rootdisp >> 24) & 0xff;
+      buf[9] = (rootdisp >> 16) & 0xff;
+      buf[10] = (rootdisp >> 8) & 0xff;
+      buf[11] = (rootdisp) & 0xff;
+    }
 
     health_get_reftime(&reftime_upper, &reftime_lower);
     buf[16] = (reftime_upper >> 24) & 0xff;
