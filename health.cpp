@@ -11,6 +11,7 @@ static enum gps_status_t gps_status = GPS_UNLOCK;
 static enum rb_status_t rb_status = RB_UNLOCK;
 static enum health_status_t health_status = HEALTH_UNLOCK;
 static uint32_t reftime_upper, reftime_lower;
+static uint32_t entered_holdover_upper, entered_holdover_lower;
 
 static unsigned char gps_watchdog = 0;
 static uint32_t fll_watchdog = ~0UL;
@@ -96,13 +97,17 @@ void health_get_reftime(uint32_t *upper, uint32_t *lower) {
   *lower = reftime_lower;
 }
 
-uint32_t health_get_ref_age() {
+static int32_t time_since(uint32_t upper, uint32_t lower) {
   uint32_t now_upper, now_lower, age;
   time_get_ntp(*TIMER_CLOCK, &now_upper, &now_lower, 0);
-  age = now_upper - reftime_upper;
-  if (now_lower < reftime_lower)
+  age = now_upper - upper;
+  if (now_lower < lower)
     age -= 1;
   return age;
+}
+
+uint32_t health_get_ref_age() {
+  return time_since(reftime_upper, reftime_lower);
 }
 
 /* Health state machine:
@@ -149,8 +154,11 @@ void health_update() {
   if (new_status != health_status) {
     health_notify_change("Health", health_status_description, health_status, new_status);
     if (new_status == HEALTH_OK) {
+      pll_leave_holdover(time_since(entered_holdover_upper, entered_holdover_lower));
       pps_output_enable();
     } else if (new_status == HEALTH_HOLDOVER) {
+      entered_holdover_upper = reftime_upper;
+      entered_holdover_lower = reftime_lower;
       pll_enter_holdover();
     } else {
       pps_output_disable();

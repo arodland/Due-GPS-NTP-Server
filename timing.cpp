@@ -101,6 +101,7 @@ static int fll_max_factor = FLL_MAX_FACTOR;
 
 static int jump_counter = 0;
 static int uptime = 0;
+static char holdover = 0;
 static unsigned char cycle = 0;
 
 void pll_reset_state() {
@@ -113,8 +114,6 @@ void pll_reset_state() {
   fll_extra = 0;
   filter_carry = 0;
   prev_pps_filtered = 0;
-  pll_factor = pll_min_factor;
-  fll_factor = fll_min_factor;
 }
 
 void pll_reset() {
@@ -288,10 +287,21 @@ void pll_run() {
 }
 
 void pll_enter_holdover() {
+  holdover = 1;
   slew_rate = 0;
   pll_set_rate(fll_rate); /* Cancel any slew in progress but keep best known FLL value */
   pll_reset_state(); /* Everything except FLL rate will be invalid when we come out of holdover */
-  pll_factor = pll_max_factor / 2;
+}
+
+void pll_leave_holdover(int32_t duration) {
+  debug("Leaving holdover after "); debug_int(duration); debug("s\r\n");
+  while (duration > 600) {
+    duration -= 600;
+    if (pll_factor > pll_max_factor / 3)
+      pll_factor -= pll_factor / 4;
+    if (fll_factor > fll_max_factor / 3)
+      fll_factor -= fll_factor / 4;
+  }
 }
 
 void time_set_sawtooth(int32_t s) {

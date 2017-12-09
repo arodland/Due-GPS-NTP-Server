@@ -12,6 +12,7 @@ extern char time_get_valid();
 extern void pll_reset();
 extern void pll_reset_state();
 extern void pll_enter_holdover();
+extern void pll_leave_holdover(int32_t duration);
 extern void time_set_sawtooth(int32_t s);
 
 
