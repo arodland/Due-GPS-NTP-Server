@@ -1,7 +1,7 @@
 # Uncomment lines below if you have problems with $PATH
 #SHELL := /bin/bash
 #PATH := /usr/local/bin:$(PATH)
-PORT := /dev/ttyACM0
+PORT := /dev/ttyduet
 
 all:
 	platformio -f -c vim run
