@@ -5,7 +5,8 @@
 #define Rb Serial2
 
 #define GPS_SIRFIII 0
-#define GPS_TSIP 1
+#define GPS_TSIP 0
+#define GPS_UBLOX 1
 
 #define DEBUG 1
 
