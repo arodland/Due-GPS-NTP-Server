@@ -332,4 +332,8 @@ void gps_init() {
   gps_set_pps_config();
 }
 
+void gps_get_timestamp(uint32_t *dest) {
+  return false;
+}
+
 #endif

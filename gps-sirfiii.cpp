@@ -433,4 +433,7 @@ void gps_handle_message() {
   }
 }
 
+void gps_get_timestamp(uint32_t *dest) {
+  return false;
+}
 #endif

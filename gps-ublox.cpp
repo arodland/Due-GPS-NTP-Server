@@ -260,6 +260,45 @@ void gps_message_nav_clock() {
 void gps_message_nav_svin() {
 }
 
+#if GPS_UBLOX_TIMESTAMP
+// To use this, connect the PPS output of the Due (pin 22)
+// to EXTINT0 on the uBlox.
+
+static bool have_timestamp;
+static int32_t timestamp;
+
+void gps_message_tim_tm2() {
+  unsigned char flags = gps_payload[1];
+
+  if (flags & 0xe0 == 0xe0) {
+    uint32_t ms_r = *((uint32_t *)(gps_payload + 8));
+    uint32_t ns_r = *((uint32_t *)(gps_payload + 12));
+    have_timestamp = true;
+    timestamp = -((ms_r % 1000) * 1000000 + ns_r) + PPSOUT_OFFSET_NS;
+  }
+}
+
+bool gps_get_timestamp(int32_t *dest) {
+  if (have_timestamp) {
+    *dest = timestamp;
+    have_timestamp = false;
+    return true;
+  }
+  return false;
+}
+
+#else
+
+void gps_message_tim_tm2() {
+}
+
+bool gps_get_timestamp(int32_t *dest) {
+  return false;
+}
+
+#endif
+
+
 void gps_handle_message() {
   switch (gps_packetid) {
     case 0x0d01:
@@ -277,6 +316,8 @@ void gps_handle_message() {
     case 0x0122:
       gps_message_nav_clock();
       break;
+    case 0x0d03:
+      gps_message_tim_tm2();
     case 0x0d04:
       gps_message_nav_svin();
       break;

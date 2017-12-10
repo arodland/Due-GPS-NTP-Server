@@ -6,6 +6,7 @@
 #include "health.h"
 #include "monitor.h"
 #include "ethernet.h"
+#include "gps.h"
 
 static unsigned short gps_week = 0;
 static uint32_t tow_sec_utc = 0;
@@ -141,7 +142,12 @@ static int32_t pll_set_rate(int32_t rate) {
 }
 
 void pll_run() {
-  int32_t pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL) + PPS_FUDGE_NS;
+  int32_t pps_ns;
+
+  if (!gps_get_timestamp(&pps_ns)) {
+    pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL) + PPS_FUDGE_NS;
+  }
+
   if (pps_ns > 500000000)
     pps_ns -= 1000000000;
 
