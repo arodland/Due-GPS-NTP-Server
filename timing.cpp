@@ -150,6 +150,8 @@ void pll_run() {
 
   if (pps_ns > 500000000)
     pps_ns -= 1000000000;
+  if (pps_ns < -500000000)
+    pps_ns += 1000000000;
 
   debug("PPS: ");
   debug(pps_ns);
