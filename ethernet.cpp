@@ -147,13 +147,17 @@ void do_ntp_request(unsigned char *pkt, unsigned int len) {
     }
     /* XXX set Leap Indicator */
 
-    /* Assume a 1ppm error accumulates as long as we're in holdover.
-     * This is pessimistic if we were previously locked to Rb. */
+    /* Assuming we had a good lock, the Rb should be stable to within
+     * a few e-10 over the time we're in holdover. And a little experimentation
+     * shows it to be better than 1e-10 under good conditions. Be conservative and
+     * accumulate rootdisp at a rate of 1e-9 (3.6us/hour). That's still better than
+     * all but a good local clock after 24h.
+     */
     if (version == 1) {
-      // 4295 / 2^32 ~~ 1e-6
-      buf[8] = 0; buf[9] = 0; buf[10] = 16; buf[11] = 199;
+      // 4 / 2^32 ~~ 1e-9
+      buf[11] = 4;
     } else {
-      rootdisp = health_get_ref_age() / 15 + 1;
+      rootdisp = (health_get_ref_age() + 7629) / 15259;
       buf[8] = (rootdisp >> 24) & 0xff;
       buf[9] = (rootdisp >> 16) & 0xff;
       buf[10] = (rootdisp >> 8) & 0xff;
