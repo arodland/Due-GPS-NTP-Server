@@ -34,6 +34,7 @@ static void timer0_setup() {
   TC0->TC_CHANNEL[0].TC_RC = 31250000;                         // Period = 1 second
   TC0->TC_CHANNEL[0].TC_RA = 31250000 - ((PPS_OFFSET_NS - PPSOUT_OFFSET_NS) / 32) - 1; // Drive high at top of second
   TC0->TC_CHANNEL[0].TC_RB = 31250000 - ((PPS_OFFSET_NS - PPSOUT_OFFSET_NS) / 32) - 1; // Drive high at top of second
+  TC0->TC_CHANNEL[0].TC_CMR |= (TC_CMR_BCPB_SET | TC_CMR_BCPC_CLEAR); // Enable pin 13 PPS for GPS feedback
   PIO_Configure(
     PIOB,
     PIO_PERIPH_B,
@@ -107,14 +108,14 @@ void timer_init() {
 
 void pps_output_enable() {
   if (!pps_output_enabled) {
-    TC0->TC_CHANNEL[0].TC_CMR |= (TC_CMR_ACPA_SET | TC_CMR_ACPC_CLEAR | TC_CMR_BCPB_SET | TC_CMR_BCPC_CLEAR);
+    TC0->TC_CHANNEL[0].TC_CMR |= (TC_CMR_ACPA_SET | TC_CMR_ACPC_CLEAR);
     pps_output_enabled = 1;
   }
 }
 
 void pps_output_disable() {
   if (pps_output_enabled) {
-    TC0->TC_CHANNEL[0].TC_CMR &= ~(TC_CMR_ACPA_SET | TC_CMR_ACPC_CLEAR | TC_CMR_BCPB_SET | TC_CMR_BCPC_CLEAR);
+    TC0->TC_CHANNEL[0].TC_CMR &= ~(TC_CMR_ACPA_SET | TC_CMR_ACPC_CLEAR);
     pps_output_enabled = 0;
   }
 }
