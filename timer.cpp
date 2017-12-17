@@ -32,6 +32,7 @@ static void timer0_setup() {
   TC0->TC_CHANNEL[0].TC_IDR = ~0; // No interrupts
   TC0->TC_CHANNEL[0].TC_CCR = TC_CCR_CLKEN;                    // Enable clock
   TC0->TC_CHANNEL[0].TC_RC = 31250000;                         // Period = 1 second
+  TC0->TC_CHANNEL[0].TC_RA = 31250000 - ((PPS_OFFSET_NS - PPSOUT_OFFSET_NS) / 32) - 1; // Drive high at top of second
   TC0->TC_CHANNEL[0].TC_RB = 31250000 - ((PPS_OFFSET_NS - PPSOUT_OFFSET_NS) / 32) - 1; // Drive high at top of second
   PIO_Configure(
     PIOB,
@@ -39,7 +40,12 @@ static void timer0_setup() {
     PIO_PB27B_TIOB0,
     PIO_DEFAULT
   );
-
+  PIO_Configure(
+    PIOB,
+    PIO_PERIPH_B,
+    PIO_PB25B_TIOA0,
+    PIO_DEFAULT
+  );
 }
 
 static void timers_start() {
@@ -93,6 +99,7 @@ void TC1_Handler() {
 
 void timer_init() {
   pinMode(13, OUTPUT);
+  pinMode(2, OUTPUT);
   timer0_setup();
   timer1_setup();
   timers_start();
@@ -100,14 +107,14 @@ void timer_init() {
 
 void pps_output_enable() {
   if (!pps_output_enabled) {
-    TC0->TC_CHANNEL[0].TC_CMR |= (TC_CMR_BCPB_SET | TC_CMR_BCPC_CLEAR);
+    TC0->TC_CHANNEL[0].TC_CMR |= (TC_CMR_ACPA_SET | TC_CMR_ACPC_CLEAR | TC_CMR_BCPB_SET | TC_CMR_BCPC_CLEAR);
     pps_output_enabled = 1;
   }
 }
 
 void pps_output_disable() {
   if (pps_output_enabled) {
-    TC0->TC_CHANNEL[0].TC_CMR &= ~(TC_CMR_BCPB_SET | TC_CMR_BCPC_CLEAR);
+    TC0->TC_CHANNEL[0].TC_CMR &= ~(TC_CMR_ACPA_SET | TC_CMR_ACPC_CLEAR | TC_CMR_BCPB_SET | TC_CMR_BCPC_CLEAR);
     pps_output_enabled = 0;
   }
 }
