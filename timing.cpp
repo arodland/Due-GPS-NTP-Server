@@ -105,6 +105,8 @@ static int uptime = 0;
 static char holdover = 0;
 static unsigned char cycle = 0;
 
+static bool pll_enabled = true;
+
 void pll_reset_state() {
   pll_accum = 0;
   prev_valid = 0;
@@ -206,6 +208,9 @@ void pll_run() {
   debug(pps_filtered);
   debug(")\r\n");
   monitor_send("phase_filtered", pps_filtered);
+
+  if (!pll_enabled)
+    return;
 
   pll_accum -= pps_filtered * 1000;
   slew_rate = pll_accum / pll_factor;
@@ -342,6 +347,14 @@ void pll_set_max(int x) {
   pll_max_factor = x;
   if (pll_factor > pll_max_factor)
     pll_factor = pll_max_factor;
+}
+
+void pll_set_enabled(bool en) {
+  if (!en) {
+    pll_set_rate(fll_rate);
+  }
+
+  pll_enabled = en;
 }
 
 int fll_get_factor() {

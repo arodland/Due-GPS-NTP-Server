@@ -108,6 +108,10 @@ static void console_handle_command() {
       getset(2, int, pll, max);
     else if (commandmatch(1, "factor"))
       getset(2, int, pll, factor);
+    else if (commandmatch(1, "disable"))
+      pll_set_enabled(false);
+    else if (commandmatch(1, "enable"))
+      pll_set_enabled(true);
     else goto invalid;
   } else if (commandmatch(0, "fll")) {
     if (commandmatch(1, "min"))
