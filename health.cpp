@@ -11,7 +11,7 @@ static enum gps_status_t gps_status = GPS_UNLOCK;
 static enum rb_status_t rb_status = RB_UNLOCK;
 static enum health_status_t health_status = HEALTH_UNLOCK;
 static uint32_t reftime_upper, reftime_lower;
-static uint32_t entered_holdover_upper, entered_holdover_lower;
+static uint32_t entered_holdover_upper = ~0UL, entered_holdover_lower = ~0UL;
 
 static unsigned char gps_watchdog = 0;
 static uint32_t fll_watchdog = ~0UL;
@@ -154,7 +154,8 @@ void health_update() {
   if (new_status != health_status) {
     health_notify_change("Health", health_status_description, health_status, new_status);
     if (new_status == HEALTH_OK) {
-      pll_leave_holdover(time_since(entered_holdover_upper, entered_holdover_lower));
+      if (entered_holdover_lower != ~0UL || entered_holdover_upper != ~0UL)
+        pll_leave_holdover(time_since(entered_holdover_upper, entered_holdover_lower));
       pps_output_enable();
     } else if (new_status == HEALTH_HOLDOVER) {
       entered_holdover_upper = reftime_upper;
