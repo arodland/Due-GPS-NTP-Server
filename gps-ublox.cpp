@@ -6,6 +6,7 @@
 #include "timing.h"
 #include "debug.h"
 #include "health.h"
+#include "monitor.h"
 
 #define GPS_BUFFER_SIZE 256
 
@@ -195,10 +196,15 @@ void gps_poll() {
   }
 }
 
+static int32_t pps_adjust;
+
 void gps_message_tim_tp() {
   unsigned int tow_msec = *((unsigned int *)(gps_payload));
   unsigned short gps_week = *((unsigned short *)(gps_payload + 12));
   char flags = gps_payload[14];
+  int32_t quant = *((int32_t *)(gps_payload + 8));
+  monitor_send("sawtooth", quant);
+  pps_adjust = -quant / 1000;
 
   time_set_date(gps_week, (tow_msec / 1000), -1);
 }
@@ -280,7 +286,7 @@ void gps_message_tim_tm2() {
 
 bool gps_get_timestamp(int32_t *dest) {
   if (have_timestamp) {
-    *dest = timestamp;
+    *dest = timestamp + pps_adjust;
     have_timestamp = false;
     return true;
   }
