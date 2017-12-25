@@ -56,7 +56,7 @@ static void timers_start() {
 
 static void timers_sync() {
   do { } while (! (TC0->TC_CHANNEL[1].TC_SR & TC_SR_CPCS));
-  int32_t tgt = TC0->TC_CHANNEL[1].TC_RA + (PPS_OFFSET_NS + PPS_FUDGE_NS) / NSPT - 7;
+  int32_t tgt = TC0->TC_CHANNEL[1].TC_RA + (PPS_OFFSET_NS + PPS_FUDGE_NS) / NSPT - 2;
   if (tgt < 0)
     tgt += HZ;
   if (tgt >= HZ)
