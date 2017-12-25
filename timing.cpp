@@ -210,78 +210,78 @@ void pll_run() {
   debug(")\r\n");
   monitor_send("phase_filtered", pps_filtered);
 
-  if (!pll_enabled)
-    return;
+  if (pll_enabled) {
+    pll_accum -= pps_filtered * 1000;
+    slew_rate = pll_accum / pll_factor;
 
-  pll_accum -= pps_filtered * 1000;
-  slew_rate = pll_accum / pll_factor;
+    fll_extra = 0;
 
-  fll_extra = 0;
+    if (prev_valid) {
+      if (uptime >= 180) {
+        fll_accum += prev_slew_rate - 1000 * (pps_filtered - prev_pps_filtered);
+        monitor_send("fll_accum", fll_accum);
 
-  if (prev_valid) {
-    if (uptime >= 180) {
-      fll_accum += prev_slew_rate - 1000 * (pps_filtered - prev_pps_filtered);
-      monitor_send("fll_accum", fll_accum);
+        int32_t mod_rate = 2 * fll_accum / (fll_factor * FLL_SMOOTH);
+        if (mod_rate > 0) {
+          mod_rate++;
+        } else {
+          mod_rate--;
+        }
+        mod_rate /= 2;
 
-      int32_t mod_rate = 2 * fll_accum / (fll_factor * FLL_SMOOTH);
-      if (mod_rate > 0) {
-        mod_rate++;
-      } else {
-        mod_rate--;
-      }
-      mod_rate /= 2;
+        debug("FLL: ");
+        debug(fll_rate);
+        fll_rate += mod_rate;
+        fll_accum -= mod_rate * fll_factor;
+        if (fll_rate > FLL_MAX) {
+          fll_rate = FLL_MAX;
+        }
+        if (fll_rate < -FLL_MAX) {
+          fll_rate = -FLL_MAX;
+        }
+        debug(" + ");
+        debug(mod_rate);
+        debug(" = ");
+        debug(fll_rate);
+        debug("\r\n");
 
-      debug("FLL: ");
-      debug(fll_rate);
-      fll_rate += mod_rate;
-      fll_accum -= mod_rate * fll_factor;
-      if (fll_rate > FLL_MAX) {
-        fll_rate = FLL_MAX;
-      }
-      if (fll_rate < -FLL_MAX) {
-        fll_rate = -FLL_MAX;
-      }
-      debug(" + ");
-      debug(mod_rate);
-      debug(" = ");
-      debug(fll_rate);
-      debug("\r\n");
-
-      fll_2a += fll_accum;
-      if (fll_2a > (fll_factor * FLL_SMOOTH)) {
-        fll_extra = 1;
-        fll_2a -= fll_factor * FLL_SMOOTH;
-      } else if (fll_2a < -(fll_factor * FLL_SMOOTH)) {
-        fll_extra = -1;
-        fll_2a += fll_factor * FLL_SMOOTH;
-      }
-    }
-  }
-
-  monitor_send("pll_factor", pll_factor);
-  monitor_send("fll_factor", fll_factor);
-
-  int32_t rate = slew_rate + fll_rate + fll_extra;
-  int32_t applied_rate = pll_set_rate(rate);
-
-  pll_accum -= (applied_rate - (fll_rate + fll_extra)) * pll_factor;
-
-  if (uptime < 300) {
-    uptime ++;
-  } else {
-    cycle ++;
-
-    if (pps_filtered >= -PLL_HEALTHY_THRESHOLD_NS && pps_filtered <= PLL_HEALTHY_THRESHOLD_NS) {
-      if (cycle % 2 == 0 && pll_factor < pll_max_factor) {
-        pll_factor ++;
-      }
-      if (cycle % 3 == 0 && fll_factor < fll_max_factor) {
-        fll_factor ++;
+        fll_2a += fll_accum;
+        if (fll_2a > (fll_factor * FLL_SMOOTH)) {
+          fll_extra = 1;
+          fll_2a -= fll_factor * FLL_SMOOTH;
+        } else if (fll_2a < -(fll_factor * FLL_SMOOTH)) {
+          fll_extra = -1;
+          fll_2a += fll_factor * FLL_SMOOTH;
+        }
       }
     }
+
+    monitor_send("pll_factor", pll_factor);
+    monitor_send("fll_factor", fll_factor);
+
+    int32_t rate = slew_rate + fll_rate + fll_extra;
+    int32_t applied_rate = pll_set_rate(rate);
+
+    pll_accum -= (applied_rate - (fll_rate + fll_extra)) * pll_factor;
+
+    if (uptime < 300) {
+      uptime ++;
+    } else {
+      cycle ++;
+
+      if (pps_filtered >= -PLL_HEALTHY_THRESHOLD_NS && pps_filtered <= PLL_HEALTHY_THRESHOLD_NS) {
+        if (cycle % 2 == 0 && pll_factor < pll_max_factor) {
+          pll_factor ++;
+        }
+        if (cycle % 3 == 0 && fll_factor < fll_max_factor) {
+          fll_factor ++;
+        }
+      }
+    }
+
+    prev_slew_rate = applied_rate - (fll_rate + fll_extra);
   }
 
-  prev_slew_rate = applied_rate - (fll_rate + fll_extra);
   prev_pps_ns = pps_ns;
   prev_pps_filtered = pps_filtered;
   if (!prev_valid) {
