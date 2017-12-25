@@ -23,7 +23,7 @@ void time_set_date(unsigned short week, unsigned int gps_tow, short offset) {
 }
 
 uint32_t make_ns(uint32_t tm, char *carry) {
-  uint32_t ns = tm * 32 + PPS_OFFSET_NS;
+  uint32_t ns = tm * NSPT + PPS_OFFSET_NS;
   if (ns >= 1000000000L) {
     ns -= 1000000000L;
     if (carry)
@@ -38,12 +38,13 @@ uint32_t time_get_ns(uint32_t tm, char *carry) {
 }
 
 inline uint32_t ntp_scale(uint32_t tm) {
-  const uint32_t mult = 0x705f4136;
-  uint32_t upper = (tm >> 16) * (mult >> 16);
-  uint32_t x1 = (tm >> 16) * (mult & 0xffff);
-  uint32_t x2 = (tm & 0xffff) * (mult >> 16);
-  uint32_t low = (tm & 0xffff) * (mult & 0xffff);
-  return tm * 137 + upper + ((x1 + x2 + (low >> 16) + 0x8032) >> 16);
+  const uint32_t mult_i = (1ULL<<32) / HZ;
+  const uint32_t mult_f = ((1ULL<<32) - mult_i * HZ) * (1ULL<<32) / HZ;
+  uint32_t upper = (tm >> 16) * (mult_f >> 16);
+  uint32_t x1 = (tm >> 16) * (mult_f & 0xffff);
+  uint32_t x2 = (tm & 0xffff) * (mult_f >> 16);
+  uint32_t low = (tm & 0xffff) * (mult_f & 0xffff);
+  return tm * mult_i + upper + ((x1 + x2 + (low >> 16) + NTP_ROUND_MAGIC) >> 16);
 }
 
 uint32_t make_ntp(uint32_t tm, int32_t fudge, char *carry) {
@@ -130,9 +131,9 @@ static int32_t pll_set_rate(int32_t rate) {
   int32_t rb_rate = 2 * (rate / 2); /* Rb granularity is 2ppt */
   rb_rate = rb_set_frequency(rb_rate);
   int32_t dds_rate = rate - rb_rate;
-  int32_t timer_offs = (dds_rate + (dds_rate > 0 ? 16000 : -16000)) / 32000;
-  dds_rate = 32000 * timer_offs; /* Timer granularity is 32ppb */
-  timers_set_max((uint32_t) 31250000 - timer_offs);
+  int32_t timer_offs = (dds_rate + (dds_rate > 0 ? 500*NSPT : -500*NSPT)) / (1000*NSPT);
+  dds_rate = 1000 * NSPT * timer_offs; /* Timer granularity NSPT ppb = 1000*NSPT ppt */
+  timers_set_max((uint32_t) HZ - timer_offs);
 
   debug(slew_rate); debug(" PLL + "); debug(fll_adjusted); debug(" FLL = "); debug(rate);
   debug(" [ "); debug(rb_rate); debug(" Rb + "); debug(dds_rate); debug(" digital ]\r\n");
