@@ -146,8 +146,9 @@ static int32_t pll_set_rate(int32_t rate) {
 
 void pll_run() {
   int32_t pps_ns;
+  bool ts_from_gps = gps_get_timestamp(&pps_ns);
 
-  if (!gps_get_timestamp(&pps_ns)) {
+  if (!ts_from_gps) {
     pps_ns = time_get_ns(*TIMER_CAPT_PPS, NULL) + PPS_FUDGE_NS;
   }
 
@@ -207,8 +208,14 @@ void pll_run() {
 
   debug(" (");
   debug(pps_filtered);
-  debug(")\r\n");
+  debug(")");
   monitor_send("phase_filtered", pps_filtered);
+
+  if (ts_from_gps) {
+    debug(" GPS\r\n");
+  } else {
+    debug("\r\n");
+  }
 
   if (pll_enabled) {
     pll_accum -= pps_filtered * 1000;
