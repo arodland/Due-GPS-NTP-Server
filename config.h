@@ -54,7 +54,7 @@
 
 #define MONITOR_ENABLED 1
 #define MONITOR_IP_ADDRESS 192,168,1,3
-#define MONITOR_MAC_ADDRESS 0xb4,0x75,0x0e,0x5c,0x5d,0xcc
+#define MONITOR_MAC_ADDRESS 0x78,0x8a,0x20,0xba,0x29,0xc9
 #define MONITOR_PORT 2003
 #define MONITOR_PREFIX "duet."
 
