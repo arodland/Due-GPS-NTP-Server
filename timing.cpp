@@ -181,7 +181,7 @@ void pll_run() {
    * trying to slew back into the zone.
    */
   if (pps_ns > 100000 || pps_ns < -100000 || 
-      prev_valid && ((pps_ns - prev_pps_ns) >= 10000 || (pps_ns - prev_pps_ns) <= -10000)
+      (prev_valid && ((pps_ns - prev_pps_ns) >= 10000 || (pps_ns - prev_pps_ns) <= -10000))
     ) {
     monitor_flush();
     timers_jam_sync();
