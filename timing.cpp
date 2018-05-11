@@ -23,7 +23,7 @@ void time_set_date(unsigned short week, unsigned int gps_tow, short offset) {
 }
 
 uint32_t make_ns(uint32_t tm, char *carry) {
-  uint32_t ns = tm * NSPT + PPS_OFFSET_NS;
+  uint32_t ns = ((uint64_t)tm * 1000000LL) / HZ + PPS_OFFSET_NS;
   if (ns >= 1000000000L) {
     ns -= 1000000000L;
     if (carry)

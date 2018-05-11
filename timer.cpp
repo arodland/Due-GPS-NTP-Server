@@ -32,8 +32,8 @@ static void timer0_setup() {
   TC0->TC_CHANNEL[0].TC_IDR = ~0; // No interrupts
   TC0->TC_CHANNEL[0].TC_CCR = TC_CCR_CLKEN;                    // Enable clock
   TC0->TC_CHANNEL[0].TC_RC = HZ;                         // Period = 1 second
-  TC0->TC_CHANNEL[0].TC_RA = HZ - ((PPS_OFFSET_NS - PPSOUT_OFFSET_NS) / NSPT) - 1; // Drive high at top of second
-  TC0->TC_CHANNEL[0].TC_RB = HZ - ((PPS_OFFSET_NS - PPSOUT_OFFSET_NS) / NSPT) - 1; // Drive high at top of second
+  TC0->TC_CHANNEL[0].TC_RA = HZ - (((uint64_t)HZ * (PPS_OFFSET_NS - PPSOUT_OFFSET_NS)) / 1000000000L) - 1; // Drive high at top of second
+  TC0->TC_CHANNEL[0].TC_RB = HZ - (((uint64_t)HZ * (PPS_OFFSET_NS - PPSOUT_OFFSET_NS)) / 1000000000L) - 1; // Drive high at top of second
   TC0->TC_CHANNEL[0].TC_CMR |= (TC_CMR_BCPB_SET | TC_CMR_BCPC_CLEAR); // Enable pin 13 PPS for GPS feedback
   PIO_Configure(
     PIOB,
@@ -56,7 +56,7 @@ static void timers_start() {
 
 static void timers_sync() {
   do { } while (! (TC0->TC_CHANNEL[1].TC_SR & TC_SR_CPCS));
-  int32_t tgt = TC0->TC_CHANNEL[1].TC_RA + (PPS_OFFSET_NS + PPS_FUDGE_NS) / NSPT - 2;
+  int32_t tgt = TC0->TC_CHANNEL[1].TC_RA + ((uint64_t)HZ * (PPS_OFFSET_NS + PPS_FUDGE_NS)) / 1000000000L - 2;
   if (tgt < 0)
     tgt += HZ;
   if (tgt >= HZ)
