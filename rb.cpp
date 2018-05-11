@@ -5,11 +5,13 @@
 static int32_t rb_ppt = 0;
 
 void rb_update_health();
+void rb_enable();
 
 void rb_init() {
   Rb.begin(57600);
   Rb.print("a0\r\n"); /* Disable analog frequency control */
   Rb.print("f0\r\n"); /* Zero frequency offset */
+  rb_enable();
   rb_ppt = 0;
   pinMode(53, INPUT);
   attachInterrupt(53, rb_update_health, CHANGE);
@@ -50,4 +52,12 @@ void rb_update_health() {
   } else {
     health_set_rb_status(RB_OK);
   }
+}
+
+void rb_enable() {
+  Rb.print("q0044\r\n");
+}
+
+void rb_disable() {
+  Rb.print("q0054\r\n");
 }

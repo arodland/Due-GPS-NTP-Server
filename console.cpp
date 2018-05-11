@@ -2,6 +2,7 @@
 #include "system.h"
 #include "timing.h"
 #include "gps.h"
+#include "rb.h"
 
 #define WORDS 10
 
@@ -126,6 +127,14 @@ static void console_handle_command() {
   } else if (commandmatch(0, "gps")) {
     if (commandmatch(1, "init"))
       gps_init();
+    else goto invalid;
+  } else if (commandmatch(0, "rb")) {
+    if (commandmatch(1, "init"))
+      rb_init();
+    else if (commandmatch(1, "on"))
+      rb_enable();
+    else if (commandmatch(1, "off"))
+      rb_disable();
     else goto invalid;
   } else {
     invalid:
