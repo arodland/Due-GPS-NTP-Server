@@ -14,7 +14,7 @@
 #define DHCP 0
 #define IPADDRESS 192,168,1,202
 
-#define HZ 10000000L
+#define HZ 30000000L
 #define NSPT (1000000000L/HZ)
 #define NTP_ROUND_MAGIC 0x9545
 

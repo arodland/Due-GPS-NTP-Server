@@ -7,10 +7,19 @@ static int32_t rb_ppt = 0;
 void rb_update_health();
 void rb_enable();
 
+static void rb_10mhz() {
+  Rb.print("o3\r\n");
+}
+
+static void rb_30mhz() {
+  Rb.print("o1\r\n");
+}
+
 void rb_init() {
   Rb.begin(57600);
   Rb.print("a0\r\n"); /* Disable analog frequency control */
   Rb.print("f0\r\n"); /* Zero frequency offset */
+  rb_30mhz();
   rb_enable();
   rb_ppt = 0;
   pinMode(53, INPUT);
