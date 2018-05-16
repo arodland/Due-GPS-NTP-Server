@@ -185,6 +185,7 @@ void pll_run() {
     ) {
     monitor_flush();
     timers_jam_sync();
+    rb_write_divisor();
     pll_reset_state();
     return;
   }

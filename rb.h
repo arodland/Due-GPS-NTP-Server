@@ -5,5 +5,6 @@ extern void rb_init();
 extern int32_t rb_set_frequency(int32_t ppb);
 extern void rb_enable();
 extern void rb_disable();
+extern void rb_write_divisor();
 
 #endif

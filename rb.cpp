@@ -8,7 +8,7 @@ static char rb_divisor = 3;
 void rb_update_health();
 void rb_enable();
 
-static void rb_write_divisor() {
+void rb_write_divisor() {
   String buf = "o";
   buf += String(rb_divisor, DEC);
   buf += "\r\n";
@@ -50,8 +50,6 @@ int32_t rb_set_frequency(int32_t ppt) {
   int32_t tenths = ppt % 10;
   if (tenths < 0)
     tenths = -tenths;
-
-  rb_write_divisor();
 
   String buf = "f";
   buf += String(tens, DEC);
